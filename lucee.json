@@ -1,0 +1,57 @@
+{
+  "name" : "CMSAdmin2.0",
+  "version" : "1.0.0",
+  "lucee" : {
+    "version" : "7.0.4.34",
+    "variant" : "standard"
+  },
+  "port" : 8080,
+  "shutdownPort" : 9080,
+  "webroot" : "./",
+  "ajp" : {
+    "enabled" : false
+  },
+  "monitoring" : {
+    "enabled" : false,
+    "jmx" : {
+      "port" : 8999
+    }
+  },
+  "jvm" : {
+    "maxMemory" : "512m",
+    "minMemory" : "128m",
+    "additionalArgs" : [ ]
+  },
+  "urlRewrite" : {
+    "enabled" : false,
+    "routerFile" : "index.cfm",
+    "configFile" : "rewrite.config"
+  },
+  "admin" : {
+    "enabled" : true,
+    "password" : ""
+  },
+  "enableLucee" : true,
+  "enableREST" : false,
+  "agents" : { },
+  "openBrowser" : true,
+  "envVars" : { },
+  "environments" : { },
+  "events" : {
+    "before" : {
+      "serverStart" : [ ],
+      "serverStop" : [ ],
+      "serverRestart" : [ ],
+      "depsInstall" : [ ]
+    },
+    "after" : {
+      "serverStart" : [ ],
+      "serverStop" : [ ],
+      "serverRestart" : [ ],
+      "depsInstall" : [ ]
+    },
+    "on" : {
+      "serverStartFailure" : [ ]
+    }
+  }
+}

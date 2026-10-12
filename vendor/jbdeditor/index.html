@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JByDesign Editor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <link rel="stylesheet" href="css/editor.css">
+  <link rel="stylesheet" href="css/demo.css">
+</head>
+<body>
+
+  <div class="container">
+    <div class="header">
+      <h1>JByDesign Editor (jbdeditor)</h1>
+      <p>Full-featured enterprise rich text editor attached to native form textfields. 100% Vanilla JS, zero dependencies, no Node.js.</p>
+      
+      <div class="features-pill-row">
+        <span class="pill pill-highlight">ADA / WCAG 2.1/2.2 AA Compliant</span>
+        <span class="pill pill-highlight">HTML Block Templates</span>
+        <span class="pill pill-highlight">Paste Cleaner (Strips Styles &amp; Classes)</span>
+        <span class="pill">Semantic Headings</span>
+        <span class="pill">Color Palette &amp; Highlights</span>
+        <span class="pill">Floating Inline Toolbar (Medium/Notion)</span>
+        <span class="pill">Accessible Tables (&lt;th scope="col|row"&gt;)</span>
+        <span class="pill">Images &amp; Captions</span>
+        <span class="pill">Special Characters</span>
+        <span class="pill">Find &amp; Replace</span>
+        <span class="pill">Fullscreen Maximize</span>
+        <span class="pill">Auto-Save Drafts</span>
+        <span class="pill">Clean Source Code View</span>
+        <span class="pill">Focus Trap Modals</span>
+        <span class="pill">Roving Tabindex Toolbar</span>
+      </div>
+      <p class="accessibility-note">
+        <strong>Accessibility Shortcuts:</strong> <kbd>Alt+F10</kbd> focus toolbar or floating inline toolbar &middot; <kbd>&larr;/&rarr;</kbd> navigate toolbar controls &middot; <kbd>Esc</kbd> exit toolbar/modals &middot; <kbd>Tab/Shift+Tab</kbd> trapped inside modal dialogs. <em>Tip: Select text to test the floating bubble toolbar!</em>
+      </p>
+    </div>
+
+    <div class="card">
+      <form id="editor-form">
+        <div class="form-group">
+          <label for="post-content">Document Editor (Attaches to &lt;textarea&gt;)</label>
+          
+          <!-- Native textarea that JBDEditor will attach to -->
+          <textarea id="post-content" name="content" rows="15" placeholder="Type your document content..."><h1>Vanilla JS JBDEditor</h1><p>Welcome to <b>JBDEditor</b>, a custom <b>Vanilla JavaScript</b> rich text editor! It is 100% standalone and attachable to standard form textareas.</p><h3>Key Features:</h3><ul><li><b>Full Formatting:</b> Bold, Italic, Underline, Strikethrough, Subscript, Superscript.</li><li><b>Typography:</b> Semantic Paragraph &amp; Heading styles (H1–H4, Preformatted, Blockquote).</li><li><b>Color System:</b> 40-color palette for font color and text highlighting.</li><li><b>Media &amp; Tables:</b> Full table creation with row/column tools and WCAG scope attributes, plus image uploads with captions.</li><li><b>HTML Block Templates:</b> Pre-designed responsive callouts, split grids, cards, hero banners, and accordions.</li><li><b>Productivity:</b> <kbd>Ctrl+F</kbd> for Find &amp; Replace, <kbd>Ctrl+Z</kbd>/<kbd>Ctrl+Y</kbd> history, and full-screen Maximize mode.</li></ul><table class="jbd-table jbd-table-bordered"><caption>JBDEditor Feature Breakdown</caption><thead><tr><th scope="col">Feature</th><th scope="col">Native JS Implementation</th><th scope="col">Form Compatibility</th></tr></thead><tbody><tr><th scope="row">Zero Node.js</th><td>Standalone browser script (file:// and http:// compatible)</td><td>Native &lt;form&gt; sync</td></tr><tr><th scope="row">Persistence</th><td>LocalStorage debounced auto-save</td><td>Draft recovery</td></tr><tr><th scope="row">Accessible Tables</th><td>Custom Dialog &amp; TableManager with &lt;th scope="col|row"&gt;</td><td>Clean semantic HTML</td></tr></tbody></table><blockquote>"Good design is as little design as possible." — Dieter Rams</blockquote></textarea>
+        </div>
+
+        <div class="btn-row">
+          <button type="submit" class="demo-btn demo-btn-primary">Submit Form (Inspect FormData)</button>
+          <button type="reset" class="demo-btn demo-btn-secondary">Reset Form</button>
+          <button type="button" id="btn-insert-template" class="demo-btn demo-btn-secondary">Open Template Modal</button>
+          <button type="button" id="btn-cleanup" class="demo-btn demo-btn-secondary">Clean Up Styles &amp; Classes</button>
+          <button type="button" id="btn-toggle-source" class="demo-btn demo-btn-secondary">Toggle Clean Source View</button>
+          <button type="button" id="btn-get-value" class="demo-btn demo-btn-secondary">Inspect editor.getHTML()</button>
+          <button type="button" id="btn-clear" class="demo-btn demo-btn-secondary">Clear Editor</button>
+        </div>
+      </form>
+
+      <div id="output" class="output-panel"></div>
+    </div>
+
+    <!-- Easy Integration Quickstart Card -->
+    <div class="card integration-card">
+      <div class="integration-header">
+        <h2>Easy Integration Guide</h2>
+        <p>Integrate JBDEditor into any application in under 60 seconds with zero dependencies.</p>
+      </div>
+
+      <div class="integration-tabs" role="tablist" aria-label="Integration approaches">
+        <button type="button" class="integration-tab active" role="tab" aria-selected="true" data-tab="zero-js">1. Zero-JS Declarative</button>
+        <button type="button" class="integration-tab" role="tab" aria-selected="false" data-tab="vanilla-js">2. 1-Line JavaScript</button>
+        <button type="button" class="integration-tab" role="tab" aria-selected="false" data-tab="inline-tb">3. Inline Bubble Toolbar</button>
+        <button type="button" class="integration-tab" role="tab" aria-selected="false" data-tab="dynamic-spa">4. Dynamic Apps &amp; HTMX</button>
+        <button type="button" class="integration-tab" role="tab" aria-selected="false" data-tab="events-form">5. Forms &amp; Events</button>
+      </div>
+
+      <div class="integration-content" id="tab-content-zero-js">
+        <div class="code-box-header">
+          <span>Automatic Auto-Init via HTML attributes:</span>
+          <button type="button" class="copy-btn" data-copy="code-zero-js">Copy Code</button>
+        </div>
+        <pre><code id="code-zero-js">&lt;!-- 1. Include Stylesheet &amp; Script --&gt;
+&lt;link rel="stylesheet" href="css/editor.css"&gt;
+&lt;script src="src/jbdeditor.js"&gt;&lt;/script&gt;
+ 
+&lt;!-- 2. Add data-jbd-editor attribute to any &lt;textarea&gt; --&gt;
+&lt;form action="/save" method="POST"&gt;
+  &lt;textarea 
+    data-jbd-editor 
+    data-jbd-toolbar="basic" 
+    data-jbd-inline-toolbar="true"
+    data-jbd-height="360px" 
+    data-jbd-placeholder="Write your article..."
+    name="content"&gt;Initial content&lt;/textarea&gt;
+  &lt;button type="submit"&gt;Submit&lt;/button&gt;
+&lt;/form&gt;</code></pre>
+      </div>
+
+      <div class="integration-content" id="tab-content-vanilla-js" style="display: none;">
+        <div class="code-box-header">
+          <span>Standard JavaScript attach API:</span>
+          <button type="button" class="copy-btn" data-copy="code-vanilla-js">Copy Code</button>
+        </div>
+        <pre><code id="code-vanilla-js">&lt;link rel="stylesheet" href="css/editor.css"&gt;
+&lt;script src="src/jbdeditor.js"&gt;&lt;/script&gt;
+
+&lt;textarea id="my-editor" name="content"&gt;&lt;/textarea&gt;
+
+&lt;script&gt;
+  const editor = JBDEditor.attach('#my-editor', {
+    toolbar: 'basic',        // 'full' | 'basic' | 'minimal' | 'article' | false
+    inlineToolbar: true,     // Contextual selection bubble toolbar
+    height: '380px',
+    placeholder: 'Write your story...',
+    autoSaveKey: 'post_draft',
+    onChange: (html, text) => {
+      console.log('Updated HTML:', html);
+    }
+  });
+&lt;/script&gt;</code></pre>
+      </div>
+
+      <div class="integration-content" id="tab-content-inline-tb" style="display: none;">
+        <div class="code-box-header">
+          <span>Medium / Notion-Style Floating Selection Bubble Toolbar:</span>
+          <button type="button" class="copy-btn" data-copy="code-inline-tb">Copy Code</button>
+        </div>
+        <pre><code id="code-inline-tb">&lt;!-- Zero-JS Declarative: --&gt;
+&lt;textarea data-jbd-editor data-jbd-inline-toolbar="true"&gt;Highlight text to see the floating toolbar!&lt;/textarea&gt;
+
+&lt;!-- Or via JavaScript API: --&gt;
+&lt;script&gt;
+  // Option A: Minimal top toolbar + floating selection bubble toolbar:
+  const editor = JBDEditor.attach('#my-editor', {
+    toolbar: 'minimal',
+    inlineToolbar: true
+  });
+
+  // Option B: Distraction-free Notion / Medium style (no top toolbar at all):
+  const notionEditor = JBDEditor.attach('#distraction-free-canvas', {
+    toolbar: false,
+    inlineToolbar: true
+  });
+
+  // Option C: Custom inline button list:
+  const customEditor = JBDEditor.attach('#custom-editor', {
+    inlineToolbar: ['bold', 'italic', 'underline', 'link', 'highlight', 'clear']
+  });
+&lt;/script&gt;</code></pre>
+      </div>
+
+      <div class="integration-content" id="tab-content-dynamic-spa" style="display: none;">
+        <div class="code-box-header">
+          <span>SPAs, HTMX, Alpine, Vue, React, &amp; Turbo:</span>
+          <button type="button" class="copy-btn" data-copy="code-dynamic-spa">Copy Code</button>
+        </div>
+        <pre><code id="code-dynamic-spa">// Scan and initialize any textareas added to the page:
+JBDEditor.initAll();
+
+// Access the instance attached to an element anytime:
+const editor = JBDEditor.get('#my-editor');
+console.log(editor.getHTML());
+
+// Cleanly unmount / destroy on page transition:
+JBDEditor.detach('#my-editor');
+
+// Or tear down all active editors:
+JBDEditor.destroyAll();</code></pre>
+      </div>
+
+      <div class="integration-content" id="tab-content-events-form" style="display: none;">
+        <div class="code-box-header">
+          <span>Native Form Submission &amp; Event Listening:</span>
+          <button type="button" class="copy-btn" data-copy="code-events-form">Copy Code</button>
+        </div>
+        <pre><code id="code-events-form">// 1. Native form submissions and FormData work automatically:
+document.querySelector('form').addEventListener('submit', (e) => {
+  const formData = new FormData(e.target);
+  console.log(formData.get('content')); // Always guaranteed up-to-date!
+});
+
+// 2. Pub/Sub Lifecycle Events:
+editor.on('change', (html, text) => {
+  console.log('Content changed:', text.length, 'chars');
+});
+
+editor.on('ready', (ed) => console.log('Ready to write!'));
+editor.on('focus', () => console.log('User focused editor'));
+editor.on('blur', () => console.log('User left editor'));</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Standard classic script tag: Runs flawlessly on file:/// protocol and http/https -->
+  <script src="src/jbdeditor.js"></script>
+
+  <script>
+    // Initialize & attach JByDesign Editor (JBDEditor)
+    const editor = JBDEditor.attach('#post-content', {
+      placeholder: 'Start writing your document...',
+      autoSaveKey: 'jbdeditor_demo_draft',
+      toolbar: 'basic',
+      inlineToolbar: true,
+      height: '500px'
+    });
+
+    const form = document.getElementById('editor-form');
+    const output = document.getElementById('output');
+
+    // Test form submission & verify FormData captures the synchronized textarea value
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      const formData = new FormData(form);
+      const submittedValue = formData.get('content');
+
+      output.style.display = 'block';
+      output.textContent = '[Form Submission Captured via FormData]\nField: "content"\n\n' + submittedValue;
+      output.scrollIntoView({ behavior: 'smooth' });
+    });
+
+    // Test template modal open
+    document.getElementById('btn-insert-template').addEventListener('click', function() {
+      editor.openTemplateModal();
+    });
+
+    // Test source view toggle
+    document.getElementById('btn-toggle-source').addEventListener('click', function() {
+      editor.toggleSourceView();
+    });
+
+    // Test Document Clean Up tool
+    document.getElementById('btn-cleanup').addEventListener('click', function() {
+      const cleaned = editor.cleanDocument();
+      output.style.display = 'block';
+      output.textContent = '[Document Cleaned: Element Styles & Classes Removed]:\n\n' + cleaned;
+      output.scrollIntoView({ behavior: 'smooth' });
+    });
+
+    // Test programmatic API
+    document.getElementById('btn-get-value').addEventListener('click', function() {
+      output.style.display = 'block';
+      output.textContent = '[editor.getHTML() Output]:\n\n' + editor.getHTML();
+      output.scrollIntoView({ behavior: 'smooth' });
+    });
+
+    document.getElementById('btn-clear').addEventListener('click', function() {
+      if (confirm('Are you sure you want to clear the editor?')) {
+        editor.clear();
+        output.style.display = 'none';
+      }
+    });
+
+    // Expose instance globally for browser DevTools exploration
+    window.editor = editor;
+
+    // Integration Guide Tabs
+    const tabs = document.querySelectorAll('.integration-tab');
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => {
+          t.classList.remove('active');
+          t.setAttribute('aria-selected', 'false');
+        });
+        tab.classList.add('active');
+        tab.setAttribute('aria-selected', 'true');
+
+        const tabId = tab.getAttribute('data-tab');
+        document.querySelectorAll('.integration-content').forEach(content => {
+          content.style.display = content.id === 'tab-content-' + tabId ? 'block' : 'none';
+        });
+      });
+    });
+
+    // 1-Click Copy Code Handler
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetId = btn.getAttribute('data-copy');
+        const code = document.getElementById(targetId)?.textContent;
+        if (code && navigator.clipboard) {
+          navigator.clipboard.writeText(code).then(() => {
+            const original = btn.textContent;
+            btn.textContent = 'Copied!';
+            btn.style.color = '#15803d';
+            setTimeout(() => {
+              btn.textContent = original;
+              btn.style.color = '';
+            }, 1800);
+          }).catch(() => {
+            alert('Failed to copy to clipboard.');
+          });
+        }
+      });
+    });
+  </script>
+</body>
+</html>

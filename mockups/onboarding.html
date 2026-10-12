@@ -1,0 +1,1419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>County HR Onboarding Administration | CMSAdmin 2.0</title>
+
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Google Material Symbols -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
+
+  <style>
+    :root {
+      --admin-primary: #0073aa;
+      --admin-primary-hover: #005a87;
+      --admin-primary-light: #e6f2f8;
+      --admin-primary-focus: rgba(0, 115, 170, 0.25);
+
+      --admin-success: #15803d;
+      --admin-success-light: #dcfce7;
+      --admin-warning: #b45309;
+      --admin-warning-light: #fef3c7;
+      --admin-danger: #b91c1c;
+      --admin-danger-light: #fee2e2;
+      --admin-info: #0284c7;
+      --admin-info-light: #e0f2fe;
+      --admin-purple: #7e22ce;
+      --admin-purple-light: #f3e8ff;
+
+      --admin-bg: #f4f6fa;
+      --admin-surface: #ffffff;
+      --admin-surface-hover: #f8fafc;
+      --admin-border: #cbd5e1;
+      --admin-border-subtle: #e2e8f0;
+      --admin-border-input: #64748b;
+
+      --admin-font: "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --admin-text-main: #0f172a;
+      --admin-text-muted: #475569;
+      --admin-text-subtle: #64748b;
+      --admin-text-inverse: #ffffff;
+
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+      --shadow-dropdown: 0 12px 28px rgba(0, 0, 0, 0.12);
+
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-full: 9999px;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--admin-font);
+      font-size: 13.5px;
+      line-height: 1.5;
+      color: var(--admin-text-main);
+      background-color: var(--admin-bg);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* TOP HEADER */
+    .admin-header {
+      height: 64px;
+      background: var(--admin-surface);
+      border-bottom: 1px solid var(--admin-border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow-sm);
+    }
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-crest {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-md);
+      background: linear-gradient(135deg, var(--admin-primary) 0%, #004b73 100%);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 16px;
+      letter-spacing: -0.5px;
+      box-shadow: 0 2px 4px rgba(0, 115, 170, 0.25);
+    }
+    .brand-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--admin-text-main);
+      line-height: 1.2;
+    }
+    .brand-subtitle {
+      font-size: 11px;
+      color: var(--admin-text-muted);
+      font-weight: 500;
+    }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* BUTTONS */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1;
+      padding: 8px 14px;
+      border-radius: var(--radius-md);
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-decoration: none;
+    }
+    .btn-sm {
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+    .btn-primary {
+      background-color: var(--admin-primary);
+      color: #fff;
+      border-color: var(--admin-primary);
+    }
+    .btn-primary:hover {
+      background-color: var(--admin-primary-hover);
+      border-color: var(--admin-primary-hover);
+    }
+    .btn-outline {
+      background-color: transparent;
+      color: var(--admin-text-main);
+      border-color: var(--admin-border);
+    }
+    .btn-outline:hover {
+      background-color: var(--admin-surface-hover);
+      border-color: var(--admin-text-muted);
+    }
+    .btn-defense {
+      background-color: #fef3c7;
+      color: #92400e;
+      border-color: #fcd34d;
+      font-weight: 700;
+    }
+    .btn-defense:hover {
+      background-color: #fde68a;
+    }
+    .btn-success {
+      background-color: var(--admin-success);
+      color: #fff;
+    }
+    .btn-success:hover {
+      background-color: #166534;
+    }
+
+    /* BADGES */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: var(--radius-full);
+      line-height: 1.2;
+    }
+    .badge-primary { background: var(--admin-primary-light); color: var(--admin-primary); }
+    .badge-success { background: var(--admin-success-light); color: var(--admin-success); }
+    .badge-warning { background: var(--admin-warning-light); color: var(--admin-warning); }
+    .badge-danger  { background: var(--admin-danger-light); color: var(--admin-danger); }
+    .badge-info    { background: var(--admin-info-light); color: var(--admin-info); }
+    .badge-neutral { background: #f1f5f9; color: var(--admin-text-muted); border: 1px solid var(--admin-border-subtle); }
+
+    /* LAYOUT WRAPPER */
+    .admin-container {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    /* PAGE HEADER */
+    .page-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .page-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--admin-text-main);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      list-style: none;
+      font-size: 12px;
+      color: var(--admin-text-muted);
+    }
+    .breadcrumb a {
+      color: var(--admin-primary);
+      text-decoration: none;
+    }
+
+    /* SUMMARY METRICS ROW */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .metric-card {
+      background: var(--admin-surface);
+      border: 1px solid var(--admin-border-subtle);
+      border-radius: var(--radius-md);
+      padding: 16px 20px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .metric-card:hover {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+    .metric-info h3 {
+      font-size: 11.5px;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--admin-text-subtle);
+      margin-bottom: 4px;
+    }
+    .metric-value {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--admin-text-main);
+      line-height: 1;
+    }
+    .metric-sub {
+      font-size: 11.5px;
+      color: var(--admin-text-muted);
+      margin-top: 4px;
+    }
+    .metric-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+
+    /* CARD CONTAINER */
+    .admin-card {
+      background: var(--admin-surface);
+      border: 1px solid var(--admin-border-subtle);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+    .card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--admin-border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--admin-text-main);
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-body {
+      padding: 20px;
+    }
+
+    /* PIPELINE STAGE PILLS */
+    .pipeline-tabs {
+      display: flex;
+      gap: 8px;
+      padding: 12px 20px;
+      background: #f8fafc;
+      border-bottom: 1px solid var(--admin-border-subtle);
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    .pipeline-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 14px;
+      border-radius: var(--radius-full);
+      font-size: 12.5px;
+      font-weight: 600;
+      background: var(--admin-surface);
+      color: var(--admin-text-muted);
+      border: 1px solid var(--admin-border);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .pipeline-tab:hover {
+      background: var(--admin-surface-hover);
+      color: var(--admin-text-main);
+    }
+    .pipeline-tab.active {
+      background: var(--admin-primary);
+      color: #fff;
+      border-color: var(--admin-primary);
+    }
+    .pipeline-tab.active .tab-count {
+      background: rgba(255, 255, 255, 0.25);
+      color: #fff;
+    }
+    .tab-count {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: var(--radius-full);
+      background: #e2e8f0;
+      color: var(--admin-text-muted);
+    }
+
+    /* FILTER BAR */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--admin-border-subtle);
+      background: var(--admin-surface);
+      flex-wrap: wrap;
+    }
+    .search-input-wrap {
+      position: relative;
+      flex: 1;
+      min-width: 260px;
+    }
+    .search-input-wrap input {
+      width: 100%;
+      padding: 7px 12px 7px 34px;
+      font-size: 13px;
+      border: 1px solid var(--admin-border);
+      border-radius: var(--radius-md);
+      font-family: inherit;
+      color: var(--admin-text-main);
+      background: #fff;
+      outline: none;
+    }
+    .search-input-wrap input:focus {
+      border-color: var(--admin-primary);
+      box-shadow: 0 0 0 2px var(--admin-primary-focus);
+    }
+    .search-icon {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 18px;
+      color: var(--admin-text-subtle);
+    }
+    .filter-select {
+      padding: 7px 12px;
+      font-size: 13px;
+      border: 1px solid var(--admin-border);
+      border-radius: var(--radius-md);
+      font-family: inherit;
+      background: #fff;
+      color: var(--admin-text-main);
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* TABLE */
+    .table-responsive {
+      overflow-x: auto;
+    }
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 13px;
+    }
+    .admin-table th {
+      padding: 10px 16px;
+      font-weight: 700;
+      font-size: 11.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--admin-text-subtle);
+      background: #f8fafc;
+      border-bottom: 1px solid var(--admin-border-subtle);
+      white-space: nowrap;
+    }
+    .admin-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--admin-border-subtle);
+      vertical-align: middle;
+      color: var(--admin-text-main);
+    }
+    .admin-table tr:hover td {
+      background-color: #f8fafc;
+    }
+    .candidate-name {
+      font-weight: 700;
+      color: var(--admin-text-main);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .candidate-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--admin-primary-light);
+      color: var(--admin-primary);
+      font-weight: 700;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .candidate-sub {
+      font-size: 11.5px;
+      color: var(--admin-text-muted);
+      margin-top: 2px;
+    }
+    .progress-bar-wrap {
+      width: 100px;
+      background: #e2e8f0;
+      height: 6px;
+      border-radius: 9999px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--admin-primary);
+      border-radius: 9999px;
+    }
+    .progress-bar-fill.complete {
+      background: var(--admin-success);
+    }
+
+    /* CASE DETAIL SLIDE-OVER DRAWER */
+    .case-drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      display: none;
+      align-items: stretch;
+      justify-content: flex-end;
+    }
+    .case-drawer-backdrop.is-open {
+      display: flex;
+    }
+    .case-drawer {
+      width: min(100%, 640px);
+      background: var(--admin-surface);
+      box-shadow: -10px 0 25px rgba(0,0,0,0.15);
+      display: flex;
+      flex-direction: column;
+      animation: drawerSlide 0.22s ease-out;
+    }
+    @keyframes drawerSlide {
+      from { transform: translateX(100%); }
+      to { transform: translateX(0); }
+    }
+    .drawer-header {
+      padding: 18px 24px;
+      background: var(--admin-surface);
+      border-bottom: 1px solid var(--admin-border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .drawer-body {
+      padding: 24px;
+      overflow-y: auto;
+      flex: 1;
+      background: #f8fafc;
+    }
+    .drawer-footer {
+      padding: 16px 24px;
+      background: var(--admin-surface);
+      border-top: 1px solid var(--admin-border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* COMPLIANCE CHECKLIST CARDS */
+    .checklist-group {
+      background: #fff;
+      border: 1px solid var(--admin-border-subtle);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .checklist-group-title {
+      font-size: 12.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--admin-text-subtle);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .check-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      background: #fff;
+      border: 1px solid var(--admin-border-subtle);
+      border-radius: var(--radius-sm);
+      margin-bottom: 8px;
+    }
+    .check-item:last-child {
+      margin-bottom: 0;
+    }
+    .check-item-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .check-item-icon {
+      font-size: 20px;
+    }
+    .check-item-title {
+      font-weight: 600;
+      color: var(--admin-text-main);
+      font-size: 13px;
+    }
+    .check-item-meta {
+      font-size: 11.5px;
+      color: var(--admin-text-muted);
+    }
+
+    /* DEFENSE DRAWER */
+    .defense-drawer {
+      width: min(100%, 580px);
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* TOAST */
+    .toast-msg {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--admin-text-main);
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 2000;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.2s ease;
+      pointer-events: none;
+    }
+    .toast-msg.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- CMSADMIN TOP HEADER -->
+  <header class="admin-header">
+    <div class="header-brand">
+      <div class="brand-crest">CC</div>
+      <div>
+        <div class="brand-title">Chelan County &bull; CMSAdmin 2.0</div>
+        <div class="brand-subtitle">Central Human Resources & Civil Service Administration</div>
+      </div>
+    </div>
+    
+    <div class="header-actions">
+      <!-- HR Design Defense Trigger Button -->
+      <button type="button" class="btn btn-defense btn-sm" onclick="openDefenseDrawer()">
+        <span class="material-symbols-outlined" style="font-size:16px;">shield</span>
+        <span>HR Design Defense & Strategy</span>
+        <span class="badge" style="background:#fde68a; color:#78350f; font-weight:700;">6 Defenses</span>
+      </button>
+
+      <button type="button" class="btn btn-outline btn-sm" onclick="showToast('Exporting active onboarding audit report for Civil Service Commission...')">
+        <span class="material-symbols-outlined" style="font-size:16px;">download</span>
+        <span>Export CS Audit Log</span>
+      </button>
+
+      <button type="button" class="btn btn-primary btn-sm" onclick="showToast('Candidate initiation modal: Enter Civil Service requisition number and candidate details.')">
+        <span class="material-symbols-outlined" style="font-size:16px;">person_add</span>
+        <span>Initiate New Onboarding</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <div class="admin-container">
+
+    <!-- PAGE HEADER -->
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">
+          <span>Employee Onboarding Administration</span>
+          <span class="badge badge-primary">Public Sector & Civil Service</span>
+        </h1>
+        <ul class="breadcrumb">
+          <li><a href="javascript:void(0);">CMSAdmin</a></li>
+          <li><span>/</span></li>
+          <li><a href="javascript:void(0);">Human Resources</a></li>
+          <li><span>/</span></li>
+          <li><span>Active Onboarding Pipeline</span></li>
+        </ul>
+      </div>
+
+      <div style="font-size: 12.5px; color: var(--admin-text-muted); text-align: right;">
+        <div>Cycle Window: <strong>FY2026-Q4</strong></div>
+        <div>Statutory Target: <strong>&le; 24 Business Days</strong></div>
+      </div>
+    </div>
+
+    <!-- SUMMARY METRICS RIBBON -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-info">
+          <h3>Active In-Flight Hires</h3>
+          <div class="metric-value">14</div>
+          <div class="metric-sub">Across 8 county departments</div>
+        </div>
+        <div class="metric-icon" style="background: var(--admin-primary-light); color: var(--admin-primary);">
+          <span class="material-symbols-outlined">group</span>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-info">
+          <h3>Pending Clearances</h3>
+          <div class="metric-value" style="color: var(--admin-warning);">5</div>
+          <div class="metric-sub">LiveScan / DOJ / Medical screening</div>
+        </div>
+        <div class="metric-icon" style="background: var(--admin-warning-light); color: var(--admin-warning);">
+          <span class="material-symbols-outlined">fingerprint</span>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-info">
+          <h3>Ready for Day 1 Orientation</h3>
+          <div class="metric-value" style="color: var(--admin-success);">4</div>
+          <div class="metric-sub">100% statutory clearance passed</div>
+        </div>
+        <div class="metric-icon" style="background: var(--admin-success-light); color: var(--admin-success);">
+          <span class="material-symbols-outlined">verified</span>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-info">
+          <h3>Avg. Time-to-Onboard</h3>
+          <div class="metric-value">18.2 <span style="font-size:14px; font-weight:600; color:var(--admin-text-muted);">days</span></div>
+          <div class="metric-sub" style="color: var(--admin-success);">▼ 5.8 days faster than county target</div>
+        </div>
+        <div class="metric-icon" style="background: var(--admin-info-light); color: var(--admin-info);">
+          <span class="material-symbols-outlined">timer</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN ONBOARDING TRACKER CARD -->
+    <div class="admin-card">
+      
+      <!-- CARD HEADER -->
+      <div class="card-header">
+        <div class="card-title">
+          <span class="material-symbols-outlined" style="color: var(--admin-primary);">badge</span>
+          <span>County Onboarding Pipeline Tracker</span>
+        </div>
+        <div style="font-size: 12px; color: var(--admin-text-muted);">
+          Showing 14 active candidates &bull; Updated 12 mins ago
+        </div>
+      </div>
+
+      <!-- PIPELINE STAGE TABS -->
+      <div class="pipeline-tabs">
+        <button class="pipeline-tab active" onclick="filterStage('all', this)">
+          <span>All Active Cases</span>
+          <span class="tab-count">14</span>
+        </button>
+        <button class="pipeline-tab" onclick="filterStage('background', this)">
+          <span>1. Civil Service & LiveScan</span>
+          <span class="tab-count">5</span>
+        </button>
+        <button class="pipeline-tab" onclick="filterStage('paperwork', this)">
+          <span>2. Appointment & Legal Forms</span>
+          <span class="tab-count">3</span>
+        </button>
+        <button class="pipeline-tab" onclick="filterStage('pension', this)">
+          <span>3. State Retirement & Benefits</span>
+          <span class="tab-count">2</span>
+        </button>
+        <button class="pipeline-tab" onclick="filterStage('provisioning', this)">
+          <span>4. IT & Access Provisioning</span>
+          <span class="tab-count">2</span>
+        </button>
+        <button class="pipeline-tab" onclick="filterStage('cleared', this)">
+          <span>5. Cleared for Day 1</span>
+          <span class="tab-count">2</span>
+        </button>
+      </div>
+
+      <!-- FILTER & SEARCH BAR -->
+      <div class="filter-bar">
+        <div class="search-input-wrap">
+          <span class="material-symbols-outlined search-icon">search</span>
+          <input type="text" id="searchInput" placeholder="Search new hire name, job title, position ID, or assigned HR analyst..." oninput="handleSearch()">
+        </div>
+
+        <div style="display:flex; align-items:center; gap:8px;">
+          <select class="filter-select" id="deptFilter" onchange="handleFilter()">
+            <option value="all">All County Departments</option>
+            <option value="Public Works">Public Works</option>
+            <option value="Sheriff">Sheriff's Office</option>
+            <option value="Community Development">Community Development</option>
+            <option value="Assessor">Assessor's Office</option>
+            <option value="Information Technology">Information Technology</option>
+            <option value="Auditor">Auditor / Accounting</option>
+          </select>
+
+          <select class="filter-select" id="analystFilter" onchange="handleFilter()">
+            <option value="all">All HR Analysts</option>
+            <option value="M. Santos">M. Santos (Sr. Analyst)</option>
+            <option value="K. Davis">K. Davis (Analyst II)</option>
+            <option value="R. Patel">R. Patel (Civil Service Specialist)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- CANDIDATES TABLE -->
+      <div class="table-responsive">
+        <table class="admin-table" id="candidatesTable">
+          <thead>
+            <tr>
+              <th>Candidate & Position</th>
+              <th>Department & Division</th>
+              <th>Current Stage</th>
+              <th>Clearance Progress</th>
+              <th>Target Start Date</th>
+              <th>Assigned HR Analyst</th>
+              <th style="text-align: right;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <!-- Rows injected by JavaScript -->
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+
+    <!-- STATUTORY WORKFLOW FOOTER NOTE -->
+    <div style="background: #e6f2f8; border-left: 4px solid var(--admin-primary); padding: 14px 18px; border-radius: var(--radius-sm); font-size: 12.5px; color: #004b73; display: flex; align-items: center; justify-content: space-between;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span class="material-symbols-outlined" style="font-size: 20px;">gavel</span>
+        <span>
+          <strong>Civil Service Rule 14 Compliance Notice:</strong> No new appointee may be given building access, network login credentials, or official duties prior to certified completion of State LiveScan fingerprinting and Constitutional Oath filing.
+        </span>
+      </div>
+      <button class="btn btn-outline btn-sm" style="background:#fff;" onclick="openDefenseDrawer()">View Compliance Defense</button>
+    </div>
+
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- CASE DETAIL SLIDE-OVER DRAWER -->
+  <!-- ============================================================ -->
+  <div class="case-drawer-backdrop" id="caseDrawerBackdrop" onclick="closeCaseDrawer(event)">
+    <div class="case-drawer" id="caseDrawer" onclick="event.stopPropagation()">
+      
+      <!-- Drawer Header -->
+      <div class="drawer-header">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div class="candidate-avatar" id="drawerAvatar" style="width:40px; height:40px; font-size:15px;">--</div>
+          <div>
+            <h2 id="drawerName" style="font-size:16px; font-weight:700; color:var(--admin-text-main); margin:0;">Candidate File</h2>
+            <div id="drawerSub" style="font-size:12px; color:var(--admin-text-muted);">Position & Department</div>
+          </div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="closeCaseDrawerDirect()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <!-- Drawer Body -->
+      <div class="drawer-body">
+
+        <!-- Case Overview Banner -->
+        <div style="background:#fff; border:1px solid var(--admin-border-subtle); border-radius:var(--radius-md); padding:16px; margin-bottom:16px;">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; font-size:12.5px;">
+            <div>
+              <span style="color:var(--admin-text-subtle); display:block; font-size:11px; text-transform:uppercase; font-weight:700;">Civil Service List</span>
+              <strong id="drawerCsRank">Certified Eligible &bull; Rank #1</strong>
+            </div>
+            <div>
+              <span style="color:var(--admin-text-subtle); display:block; font-size:11px; text-transform:uppercase; font-weight:700;">Salary Grade / Step</span>
+              <strong id="drawerSalary">Range 24, Step 2 ($36.85/hr)</strong>
+            </div>
+            <div>
+              <span style="color:var(--admin-text-subtle); display:block; font-size:11px; text-transform:uppercase; font-weight:700;">Bargaining Unit</span>
+              <strong id="drawerUnion">AFSCME Local 846 (Represented)</strong>
+            </div>
+            <div>
+              <span style="color:var(--admin-text-subtle); display:block; font-size:11px; text-transform:uppercase; font-weight:700;">Target Start Date</span>
+              <strong id="drawerStartDate" style="color:var(--admin-primary);">October 19, 2026</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Clearance Checklist -->
+        <div class="checklist-group">
+          <div class="checklist-group-title">
+            <span>Phase 1: Pre-Employment Clearance & Medical</span>
+            <span class="badge badge-success" id="badgePhase1">In Progress</span>
+          </div>
+
+          <div class="check-item">
+            <div class="check-item-info">
+              <span class="material-symbols-outlined check-item-icon" style="color:var(--admin-success);">check_circle</span>
+              <div>
+                <div class="check-item-title">DOJ / FBI LiveScan Fingerprinting</div>
+                <div class="check-item-meta">Certified clean record &bull; Cleared Oct 5, 2026</div>
+              </div>
+            </div>
+            <span class="badge badge-success">Cleared</span>
+          </div>
+
+          <div class="check-item">
+            <div class="check-item-info">
+              <span class="material-symbols-outlined check-item-icon" id="iconMed" style="color:var(--admin-warning);">pending</span>
+              <div>
+                <div class="check-item-title">Pre-Placement Physical & 10-Panel Drug Screen</div>
+                <div class="check-item-meta" id="metaMed">Confluence Health Clinic &bull; Awaiting lab report</div>
+              </div>
+            </div>
+            <button class="btn btn-outline btn-sm" id="btnToggleMed" onclick="toggleMedicalClearance()">Update Status</button>
+          </div>
+
+          <div class="check-item">
+            <div class="check-item-info">
+              <span class="material-symbols-outlined check-item-icon" style="color:var(--admin-success);">check_circle</span>
+              <div>
+                <div class="check-item-title">DOL Driving Record Verification</div>
+                <div class="check-item-meta">Authorized for County vehicle fleet operations</div>
+              </div>
+            </div>
+            <span class="badge badge-success">Approved</span>
+          </div>
+        </div>
+
+        <div class="checklist-group">
+          <div class="checklist-group-title">
+            <span>Phase 2: Statutory Appointment & Legal Paperwork</span>
+            <span class="badge badge-primary">Standard</span>
+          </div>
+
+          <div class="check-item">
+            <div class="check-item-info">
+              <span class="material-symbols-outlined check-item-icon" style="color:var(--admin-success);">check_circle</span>
+              <div>
+                <div class="check-item-title">Constitutional Oath of Office</div>
+                <div class="check-item-meta">Executed before Deputy County Auditor &bull; Filed</div>
+              </div>
+            </div>
+            <span class="badge badge-success">On File</span>
+          </div>
+
+          <div class="check-item">
+            <div class="check-item-info">
+              <span class="material-symbols-outlined check-item-icon" style="color:var(--admin-success);">check_circle</span>
+              <div>
+                <div class="check-item-title">Form I-9 & E-Verify DHS Clearance</div>
+                <div class="check-item-meta">DHS Case #EV-938218-WA &bull; Employment authorized</div>
+              </div>
+            </div>
+            <span class="badge badge-success">Verified</span>
+          </div>
+
+          <div class="check-item">
+            <div class="check-item-info">
+              <span class="material-symbols-outlined check-item-icon" style="color:var(--admin-success);">check_circle</span>
+              <div>
+                <div class="check-item-title">Direct Deposit & W-4 Withholdings</div>
+                <div class="check-item-meta">Auditor Payroll account profile active</div>
+              </div>
+            </div>
+            <span class="badge badge-success">Complete</span>
+          </div>
+        </div>
+
+        <div class="checklist-group">
+          <div class="checklist-group-title">
+            <span>Phase 3: Public Employee Benefits & Pension</span>
+            <span class="badge badge-info">State PEBA</span>
+          </div>
+
+          <div class="check-item">
+            <div class="check-item-info">
+              <span class="material-symbols-outlined check-item-icon" style="color:var(--admin-success);">check_circle</span>
+              <div>
+                <div class="check-item-title">Washington State DRS (PERS Plan 2/3 Election)</div>
+                <div class="check-item-meta">State retirement enrollment transmitted</div>
+              </div>
+            </div>
+            <span class="badge badge-success">Enrolled</span>
+          </div>
+
+          <div class="check-item">
+            <div class="check-item-info">
+              <span class="material-symbols-outlined check-item-icon" style="color:var(--admin-primary);">schedule</span>
+              <div>
+                <div class="check-item-title">PEBA Healthcare & Dental Elections</div>
+                <div class="check-item-meta">30-day statutory window &bull; Packet received by candidate</div>
+              </div>
+            </div>
+            <span class="badge badge-primary">30d Window</span>
+          </div>
+        </div>
+
+        <div class="checklist-group">
+          <div class="checklist-group-title">
+            <span>Phase 4: County IT & Department Facility Access</span>
+            <span class="badge badge-warning">Pending IT</span>
+          </div>
+
+          <div class="check-item">
+            <div class="check-item-info">
+              <span class="material-symbols-outlined check-item-icon" style="color:var(--admin-success);">check_circle</span>
+              <div>
+                <div class="check-item-title">County Active Directory & Email Account</div>
+                <div class="check-item-meta">User ID provisioned: <code style="background:#e2e8f0; padding:1px 4px; border-radius:3px;">jblake@co.chelan.wa.us</code></div>
+              </div>
+            </div>
+            <span class="badge badge-success">Provisioned</span>
+          </div>
+
+          <div class="check-item">
+            <div class="check-item-info">
+              <span class="material-symbols-outlined check-item-icon" style="color:var(--admin-warning);">credit_card</span>
+              <div>
+                <div class="check-item-title">Building Keycard Badge & Secure Suite Access</div>
+                <div class="check-item-meta">Facilities Dept &bull; Assigned to Public Works Suite B</div>
+              </div>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="showToast('Building badge encoded & staged at HR reception desk.')">Encode Badge</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Drawer Footer -->
+      <div class="drawer-footer">
+        <button class="btn btn-outline btn-sm" onclick="showToast('Notice sent to hiring department coordinator and mentor.')">
+          <span class="material-symbols-outlined">mail</span>
+          <span>Notify Dept Coordinator</span>
+        </button>
+
+        <button class="btn btn-success btn-sm" onclick="certifyCandidateReady()">
+          <span class="material-symbols-outlined">verified</span>
+          <span>Certify Cleared for Day 1</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- SLIDE-OVER DRAWER: HR DESIGN DEFENSE STRATEGY -->
+  <!-- ============================================================ -->
+  <div class="case-drawer-backdrop" id="defenseDrawerBackdrop" onclick="closeDefenseDrawer(event)">
+    <div class="case-drawer defense-drawer" onclick="event.stopPropagation()">
+      
+      <div class="drawer-header" style="background:#0f172a; color:#fff;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="width:36px; height:36px; border-radius:8px; background:#f59e0b; color:#0f172a; font-weight:800; display:flex; align-items:center; justify-content:center; font-size:18px;">
+            🛡️
+          </div>
+          <div>
+            <h2 style="font-size:16px; font-weight:700; color:#fff; margin:0;">HR Design Defense Dossier</h2>
+            <div style="font-size:11.5px; color:#cbd5e1;">Public Sector & County HR Rationale</div>
+          </div>
+        </div>
+        <button class="btn btn-outline btn-sm" style="color:#fff; border-color:#334155;" onclick="closeDefenseDrawer()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="drawer-body" style="padding:20px; font-size:13px; line-height:1.6; color:#334155;">
+        
+        <div style="background:#fef3c7; border-left:4px solid #b45309; padding:12px 16px; border-radius:4px; margin-bottom:16px;">
+          <strong style="color:#92400e; font-size:12px; text-transform:uppercase; display:block; margin-bottom:4px;">Core Value Proposition for HR Leadership</strong>
+          County onboarding is governed by statutory mandates (Civil Service rules, DOJ LiveScan, State Pension enrollment, Constitutional Oaths). This dashboard eliminates the disjointed "paper folder passing" between HR, Payroll, Facilities, and County IT.
+        </div>
+
+        <div style="background:#fff; border:1px solid var(--admin-border-subtle); border-radius:8px; padding:14px; margin-bottom:12px;">
+          <h4 style="font-size:13px; font-weight:700; color:#0f172a; margin-bottom:4px;">Defense 1: Audit-Proof Civil Service Compliance</h4>
+          <p style="font-size:12px; color:#475569; margin:0;">
+            <strong>Why it matters:</strong> Under Washington Civil Service Rule 14, an employee cannot legally begin paid service without certified LiveScan clearance and an executed Oath of Office. The centralized clearance tracker prevents departments from starting employees prematurely, protecting the county from audit findings and liability.
+          </p>
+        </div>
+
+        <div style="background:#fff; border:1px solid var(--admin-border-subtle); border-radius:8px; padding:14px; margin-bottom:12px;">
+          <h4 style="font-size:13px; font-weight:700; color:#0f172a; margin-bottom:4px;">Defense 2: Eliminating the "Day 1 Idle Desk" Phenomenon</h4>
+          <p style="font-size:12px; color:#475569; margin:0;">
+            <strong>Why it matters:</strong> Across municipal governments, new hires often spend Day 1 sitting in an empty cube waiting for IT logins or building proximity badges. By tracking Phase 4 (IT & Facilities) 5 days before start date, county credentials and access keys are staged before the employee arrives.
+          </p>
+        </div>
+
+        <div style="background:#fff; border:1px solid var(--admin-border-subtle); border-radius:8px; padding:14px; margin-bottom:12px;">
+          <h4 style="font-size:13px; font-weight:700; color:#0f172a; margin-bottom:4px;">Defense 3: Reducing Cycle Time from 35 Days to 18 Days</h4>
+          <p style="font-size:12px; color:#475569; margin:0;">
+            <strong>Why it matters:</strong> Candidate drop-off in public sector hiring is notorious due to long delays between conditional offer and start date. By giving HR analysts automated alerts on bottlenecks (e.g. pending Confluence Health clinic drug screens), delays are caught in 24 hours instead of 2 weeks.
+          </p>
+        </div>
+
+        <div style="background:#fff; border:1px solid var(--admin-border-subtle); border-radius:8px; padding:14px; margin-bottom:12px;">
+          <h4 style="font-size:13px; font-weight:700; color:#0f172a; margin-bottom:4px;">Defense 4: Native Alignment with CMSAdmin 2.0 Design System</h4>
+          <p style="font-size:12px; color:#475569; margin:0;">
+            <strong>Why it matters:</strong> Rather than forcing HR staff to learn an expensive third-party SaaS portal (like Workday or NeoGov onboarding add-ons), this module operates natively within the county's existing CMSAdmin framework with identical typography, badges, and workspace permissions.
+          </p>
+        </div>
+
+      </div>
+
+      <div class="drawer-footer">
+        <span style="font-size:12px; color:var(--admin-text-muted);">Ready to present to County Administrator & HR Director</span>
+        <button class="btn btn-primary btn-sm" onclick="closeDefenseDrawer()">Close Dossier</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div class="toast-msg" id="toastMsg">
+    <span class="material-symbols-outlined" style="font-size:18px; color:#4ade80;">check_circle</span>
+    <span id="toastText">Action completed</span>
+  </div>
+
+  <!-- CLIENT JAVASCRIPT -->
+  <script>
+    // Real public sector candidate data
+    const candidates = [
+      {
+        id: 1,
+        name: "Jordan Blake",
+        initials: "JB",
+        title: "Associate Civil Engineer",
+        csRank: "Certified Eligible #1",
+        dept: "Public Works",
+        div: "Roads & Stormwater Division",
+        stage: "background",
+        stageName: "1. Civil Service & LiveScan",
+        stageBadge: "badge-warning",
+        progress: 3,
+        total: 7,
+        startDate: "Oct 19, 2026",
+        analyst: "M. Santos",
+        salary: "Range 28, Step 2 ($38.50/hr)",
+        union: "AFSCME Local 846",
+        medCleared: false
+      },
+      {
+        id: 2,
+        name: "Deputy Marcus Vance",
+        initials: "MV",
+        title: "Patrol Deputy Recruit",
+        csRank: "Civil Service Eligible #3",
+        dept: "Sheriff",
+        div: "Operations & Patrol Division",
+        stage: "background",
+        stageName: "1. Civil Service & LiveScan",
+        stageBadge: "badge-warning",
+        progress: 2,
+        total: 7,
+        startDate: "Nov 02, 2026",
+        analyst: "R. Patel",
+        salary: "Sheriff Guild Step 1 ($34.20/hr)",
+        union: "Chelan County Deputy Sheriff's Guild",
+        medCleared: false
+      },
+      {
+        id: 3,
+        name: "Elena Rostova",
+        initials: "ER",
+        title: "Senior Planner (Land Use)",
+        csRank: "Open Competitive Eligible #1",
+        dept: "Community Development",
+        div: "Planning & Permitting Division",
+        stage: "provisioning",
+        stageName: "4. IT & Facility Access",
+        stageBadge: "badge-primary",
+        progress: 6,
+        total: 7,
+        startDate: "Oct 26, 2026",
+        analyst: "M. Santos",
+        salary: "Range 26, Step 3 ($39.10/hr)",
+        union: "AFSCME Local 846",
+        medCleared: true
+      },
+      {
+        id: 4,
+        name: "David Kim",
+        initials: "DK",
+        title: "Appraiser II (Commercial)",
+        csRank: "Certified Eligible #2",
+        dept: "Assessor",
+        div: "Real Property Valuation",
+        stage: "cleared",
+        stageName: "5. Cleared for Day 1",
+        stageBadge: "badge-success",
+        progress: 7,
+        total: 7,
+        startDate: "Oct 19, 2026",
+        analyst: "K. Davis",
+        salary: "Range 22, Step 2 ($32.40/hr)",
+        union: "AFSCME Local 846",
+        medCleared: true
+      },
+      {
+        id: 5,
+        name: "Sarah Lindqvist",
+        initials: "SL",
+        title: "Network Systems Specialist",
+        csRank: "Exempt / Non-Represented",
+        dept: "Information Technology",
+        div: "Enterprise Infrastructure",
+        stage: "pension",
+        stageName: "3. State Retirement & Benefits",
+        stageBadge: "badge-info",
+        progress: 5,
+        total: 7,
+        startDate: "Nov 02, 2026",
+        analyst: "K. Davis",
+        salary: "Range 30, Step 4 ($44.60/hr)",
+        union: "Non-Represented Professional",
+        medCleared: true
+      },
+      {
+        id: 6,
+        name: "Carlos Mendez",
+        initials: "CM",
+        title: "Senior Accountant",
+        csRank: "Certified Eligible #1",
+        dept: "Auditor",
+        div: "Financial Services & Payroll",
+        stage: "cleared",
+        stageName: "5. Cleared for Day 1",
+        stageBadge: "badge-success",
+        progress: 7,
+        total: 7,
+        startDate: "Oct 19, 2026",
+        analyst: "R. Patel",
+        salary: "Range 27, Step 3 ($41.00/hr)",
+        union: "AFSCME Local 846",
+        medCleared: true
+      },
+      {
+        id: 7,
+        name: "Rachel Chen",
+        initials: "RC",
+        title: "Environmental Health Specialist",
+        csRank: "Open Competitive Eligible #2",
+        dept: "Community Development",
+        div: "Environmental Health & Septic",
+        stage: "paperwork",
+        stageName: "2. Appointment & Legal Forms",
+        stageBadge: "badge-primary",
+        progress: 4,
+        total: 7,
+        startDate: "Nov 09, 2026",
+        analyst: "M. Santos",
+        salary: "Range 25, Step 1 ($34.80/hr)",
+        union: "AFSCME Local 846",
+        medCleared: true
+      }
+    ];
+
+    let currentStageFilter = 'all';
+    let activeCandidateId = null;
+
+    function renderTable() {
+      const tbody = document.getElementById('tableBody');
+      const searchVal = document.getElementById('searchInput').value.toLowerCase();
+      const deptVal = document.getElementById('deptFilter').value;
+      const analystVal = document.getElementById('analystFilter').value;
+
+      const filtered = candidates.filter(c => {
+        const matchesStage = (currentStageFilter === 'all') || (c.stage === currentStageFilter);
+        const matchesDept = (deptVal === 'all') || (c.dept === deptVal);
+        const matchesAnalyst = (analystVal === 'all') || (c.analyst === analystVal);
+        const matchesSearch = c.name.toLowerCase().includes(searchVal) ||
+                              c.title.toLowerCase().includes(searchVal) ||
+                              c.dept.toLowerCase().includes(searchVal) ||
+                              c.analyst.toLowerCase().includes(searchVal);
+        return matchesStage && matchesDept && matchesAnalyst && matchesSearch;
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:32px; color:var(--admin-text-muted);">No candidates matching current filter criteria.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(c => {
+        const pct = Math.round((c.progress / c.total) * 100);
+        const isComplete = c.progress === c.total;
+        return `
+          <tr>
+            <td>
+              <div class="candidate-name">
+                <div class="candidate-avatar">${c.initials}</div>
+                <div>
+                  <div>${c.name}</div>
+                  <div class="candidate-sub">${c.title} &bull; <span style="color:var(--admin-text-subtle);">${c.csRank}</span></div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div style="font-weight:600;">${c.dept}</div>
+              <div class="candidate-sub">${c.div}</div>
+            </td>
+            <td>
+              <span class="badge ${c.stageBadge}">${c.stageName}</span>
+            </td>
+            <td>
+              <div style="display:flex; align-items:center; justify-content:space-between; font-size:11.5px; font-weight:600; width:100px;">
+                <span>${c.progress}/${c.total}</span>
+                <span style="color:${isComplete ? 'var(--admin-success)' : 'var(--admin-text-muted)'};">${pct}%</span>
+              </div>
+              <div class="progress-bar-wrap">
+                <div class="progress-bar-fill ${isComplete ? 'complete' : ''}" style="width:${pct}%;"></div>
+              </div>
+            </td>
+            <td>
+              <strong style="color:var(--admin-text-main);">${c.startDate}</strong>
+            </td>
+            <td>
+              <span style="font-weight:600; color:var(--admin-text-muted);">${c.analyst}</span>
+            </td>
+            <td style="text-align: right;">
+              <button class="btn btn-outline btn-sm" onclick="openCaseDrawer(${c.id})">
+                <span class="material-symbols-outlined" style="font-size:15px;">folder_open</span>
+                <span>Inspect Case</span>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function filterStage(stage, btn) {
+      currentStageFilter = stage;
+      document.querySelectorAll('.pipeline-tab').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+      renderTable();
+    }
+
+    function handleSearch() { renderTable(); }
+    function handleFilter() { renderTable(); }
+
+    function openCaseDrawer(id) {
+      activeCandidateId = id;
+      const c = candidates.find(x => x.id === id);
+      if (!c) return;
+
+      document.getElementById('drawerAvatar').textContent = c.initials;
+      document.getElementById('drawerName').textContent = c.name + " (" + c.title + ")";
+      document.getElementById('drawerSub').textContent = c.dept + " • " + c.div;
+      document.getElementById('drawerCsRank').textContent = c.csRank;
+      document.getElementById('drawerSalary').textContent = c.salary;
+      document.getElementById('drawerUnion').textContent = c.union;
+      document.getElementById('drawerStartDate').textContent = c.startDate;
+
+      updateMedicalDisplay(c.medCleared);
+
+      document.getElementById('caseDrawerBackdrop').classList.add('is-open');
+    }
+
+    function updateMedicalDisplay(isCleared) {
+      const icon = document.getElementById('iconMed');
+      const meta = document.getElementById('metaMed');
+      const btn = document.getElementById('btnToggleMed');
+      if (isCleared) {
+        icon.textContent = 'check_circle';
+        icon.style.color = 'var(--admin-success)';
+        meta.textContent = '10-Panel Lab Screen Passed • Cleared Oct 9, 2026';
+        btn.textContent = 'Reset to Pending';
+        btn.classList.remove('btn-success');
+        btn.classList.add('btn-outline');
+      } else {
+        icon.textContent = 'pending';
+        icon.style.color = 'var(--admin-warning)';
+        meta.textContent = 'Confluence Health Clinic • Awaiting lab report';
+        btn.textContent = 'Mark Lab Cleared';
+        btn.classList.remove('btn-outline');
+        btn.classList.add('btn-success');
+      }
+    }
+
+    function toggleMedicalClearance() {
+      const c = candidates.find(x => x.id === activeCandidateId);
+      if (!c) return;
+      c.medCleared = !c.medCleared;
+      if (c.medCleared) {
+        c.progress = Math.min(c.total, c.progress + 1);
+        showToast('Pre-employment medical & drug screening verified.');
+      } else {
+        c.progress = Math.max(1, c.progress - 1);
+        showToast('Medical clearance set to pending review.');
+      }
+      updateMedicalDisplay(c.medCleared);
+      renderTable();
+    }
+
+    function certifyCandidateReady() {
+      const c = candidates.find(x => x.id === activeCandidateId);
+      if (!c) return;
+      c.stage = 'cleared';
+      c.stageName = '5. Cleared for Day 1';
+      c.stageBadge = 'badge-success';
+      c.progress = c.total;
+      c.medCleared = true;
+      closeCaseDrawerDirect();
+      showToast(`${c.name} certified 100% cleared! Day 1 orientation scheduled with Department Coordinator.`);
+      renderTable();
+    }
+
+    function closeCaseDrawer(e) {
+      if (e.target.id === 'caseDrawerBackdrop') {
+        closeCaseDrawerDirect();
+      }
+    }
+    function closeCaseDrawerDirect() {
+      document.getElementById('caseDrawerBackdrop').classList.remove('is-open');
+    }
+
+    function openDefenseDrawer() {
+      document.getElementById('defenseDrawerBackdrop').classList.add('is-open');
+    }
+    function closeDefenseDrawer() {
+      document.getElementById('defenseDrawerBackdrop').classList.remove('is-open');
+    }
+
+    function showToast(text) {
+      const t = document.getElementById('toastMsg');
+      const msg = document.getElementById('toastText');
+      msg.textContent = text;
+      t.classList.add('show');
+      setTimeout(() => {
+        t.classList.remove('show');
+      }, 3500);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      renderTable();
+    });
+  </script>
+</body>
+</html>

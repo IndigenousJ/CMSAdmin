@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 520" role="img" aria-labelledby="title description">
+  <title id="title">Three parts of the Form Builder</title>
+  <desc id="description">Choose a question from Form Elements on the left, arrange it on the form canvas in the middle, and edit it in Settings on the right.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f4f8fc"/>
+      <stop offset="1" stop-color="#e9f0f7"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="7" stdDeviation="8" flood-color="#17324d" flood-opacity=".12"/>
+    </filter>
+  </defs>
+  <rect width="1280" height="520" rx="24" fill="url(#background)"/>
+  <text x="48" y="55" fill="#16324f" font-family="Arial, sans-serif" font-size="25" font-weight="700">Your form-building workspace</text>
+  <text x="48" y="82" fill="#52677b" font-family="Arial, sans-serif" font-size="15">Choose a building block → arrange the form → fine-tune the details</text>
+
+  <g filter="url(#shadow)">
+    <rect x="42" y="112" width="300" height="340" rx="16" fill="#fff"/>
+    <rect x="42" y="112" width="300" height="58" rx="16" fill="#fff"/>
+    <path d="M42 154h300" stroke="#e3eaf1"/>
+    <circle cx="78" cy="141" r="20" fill="#dceefa"/>
+    <text x="78" y="148" text-anchor="middle" fill="#0073aa" font-family="Arial, sans-serif" font-size="19" font-weight="700">1</text>
+    <text x="110" y="147" fill="#18344e" font-family="Arial, sans-serif" font-size="18" font-weight="700">Form Elements</text>
+    <text x="66" y="199" fill="#65798c" font-family="Arial, sans-serif" font-size="12" font-weight="700" letter-spacing="1">CLICK TO ADD A QUESTION</text>
+    <rect x="66" y="216" width="116" height="50" rx="9" fill="#f6f9fc" stroke="#dbe5ed"/>
+    <text x="83" y="246" fill="#29445d" font-family="Arial, sans-serif" font-size="14">T</text>
+    <text x="105" y="246" fill="#29445d" font-family="Arial, sans-serif" font-size="14">Short Text</text>
+    <rect x="195" y="216" width="123" height="50" rx="9" fill="#f6f9fc" stroke="#dbe5ed"/>
+    <text x="208" y="246" fill="#29445d" font-family="Arial, sans-serif" font-size="14">✉</text>
+    <text x="230" y="246" fill="#29445d" font-family="Arial, sans-serif" font-size="14">Email</text>
+    <rect x="66" y="280" width="116" height="50" rx="9" fill="#f6f9fc" stroke="#dbe5ed"/>
+    <text x="82" y="310" fill="#29445d" font-family="Arial, sans-serif" font-size="14">☰</text>
+    <text x="105" y="310" fill="#29445d" font-family="Arial, sans-serif" font-size="14">Dropdown</text>
+    <rect x="195" y="280" width="123" height="50" rx="9" fill="#f6f9fc" stroke="#dbe5ed"/>
+    <text x="208" y="310" fill="#29445d" font-family="Arial, sans-serif" font-size="14">▤</text>
+    <text x="230" y="310" fill="#29445d" font-family="Arial, sans-serif" font-size="14">Long Text</text>
+    <rect x="66" y="351" width="252" height="73" rx="10" fill="#eef6fb"/>
+    <text x="84" y="379" fill="#31516e" font-family="Arial, sans-serif" font-size="14" font-weight="700">Tip</text>
+    <text x="84" y="402" fill="#52677b" font-family="Arial, sans-serif" font-size="13">Click a block to add it, or drag it</text>
+    <text x="84" y="419" fill="#52677b" font-family="Arial, sans-serif" font-size="13">into the form in the middle.</text>
+  </g>
+
+  <path d="M355 278h33" stroke="#0073aa" stroke-width="3" stroke-linecap="round"/>
+  <path d="m380 269 10 9-10 9" fill="none" stroke="#0073aa" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <g filter="url(#shadow)">
+    <rect x="396" y="112" width="470" height="340" rx="16" fill="#fff"/>
+    <rect x="396" y="112" width="470" height="58" rx="16" fill="#fff"/>
+    <path d="M396 154h470" stroke="#e3eaf1"/>
+    <circle cx="432" cy="141" r="20" fill="#e7f5eb"/>
+    <text x="432" y="148" text-anchor="middle" fill="#168044" font-family="Arial, sans-serif" font-size="19" font-weight="700">2</text>
+    <text x="464" y="147" fill="#18344e" font-family="Arial, sans-serif" font-size="18" font-weight="700">Your form</text>
+    <rect x="423" y="185" width="416" height="236" rx="12" fill="#fcfdff" stroke="#dce6ef"/>
+    <rect x="423" y="185" width="416" height="8" rx="4" fill="#0073aa"/>
+    <text x="449" y="226" fill="#18344e" font-family="Arial, sans-serif" font-size="21" font-weight="700">Contact our team</text>
+    <text x="449" y="249" fill="#64788b" font-family="Arial, sans-serif" font-size="13">Tell us how we can help. We will follow up by email.</text>
+    <text x="449" y="287" fill="#29445d" font-family="Arial, sans-serif" font-size="13" font-weight="700">Your name <tspan fill="#b42318">*</tspan></text>
+    <rect x="449" y="297" width="364" height="39" rx="7" fill="#fff" stroke="#b9c9d7"/>
+    <text x="463" y="322" fill="#8999a8" font-family="Arial, sans-serif" font-size="13">Enter your name</text>
+    <text x="449" y="365" fill="#29445d" font-family="Arial, sans-serif" font-size="13" font-weight="700">Email address <tspan fill="#b42318">*</tspan></text>
+    <rect x="449" y="375" width="364" height="32" rx="7" fill="#fff" stroke="#b9c9d7"/>
+    <circle cx="823" cy="206" r="13" fill="#eaf4fb"/>
+    <text x="823" y="211" text-anchor="middle" fill="#0073aa" font-family="Arial, sans-serif" font-size="14">✎</text>
+  </g>
+
+  <path d="M879 278h33" stroke="#0073aa" stroke-width="3" stroke-linecap="round"/>
+  <path d="m904 269 10 9-10 9" fill="none" stroke="#0073aa" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <g filter="url(#shadow)">
+    <rect x="920" y="112" width="318" height="340" rx="16" fill="#fff"/>
+    <rect x="920" y="112" width="318" height="58" rx="16" fill="#fff"/>
+    <path d="M920 154h318" stroke="#e3eaf1"/>
+    <circle cx="956" cy="141" r="20" fill="#f2eafb"/>
+    <text x="956" y="148" text-anchor="middle" fill="#7441a6" font-family="Arial, sans-serif" font-size="19" font-weight="700">3</text>
+    <text x="988" y="147" fill="#18344e" font-family="Arial, sans-serif" font-size="18" font-weight="700">Settings</text>
+    <rect x="944" y="187" width="270" height="38" rx="9" fill="#f5f8fb"/>
+    <text x="1079" y="211" text-anchor="middle" fill="#0073aa" font-family="Arial, sans-serif" font-size="13" font-weight="700">FIELD SETTINGS</text>
+    <text x="946" y="256" fill="#29445d" font-family="Arial, sans-serif" font-size="13" font-weight="700">Question label</text>
+    <rect x="944" y="266" width="270" height="38" rx="7" fill="#fff" stroke="#b9c9d7"/>
+    <text x="958" y="290" fill="#29445d" font-family="Arial, sans-serif" font-size="13">Your name</text>
+    <rect x="946" y="325" width="17" height="17" rx="3" fill="#0073aa"/>
+    <path d="m950 333 4 4 7-9" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="974" y="339" fill="#29445d" font-family="Arial, sans-serif" font-size="13">Required question</text>
+    <text x="946" y="382" fill="#64788b" font-family="Arial, sans-serif" font-size="13">Change the label, help text,</text>
+    <text x="946" y="402" fill="#64788b" font-family="Arial, sans-serif" font-size="13">answer choices, and field width.</text>
+  </g>
+
+  <text x="640" y="489" text-anchor="middle" fill="#52677b" font-family="Arial, sans-serif" font-size="14">When you are ready, preview your form and click “Save Form”.</text>
+</svg>

@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>JBDEditor WCAG / ADA & Functional Test Suite</title>
+  <link rel="stylesheet" href="css/editor.css">
+</head>
+<body>
+  <form id="test-form">
+    <label id="test-label" for="test-textarea">Article Body</label>
+    <textarea id="test-textarea" name="article" required>Initial Content</textarea>
+    <button type="submit" id="submit-btn">Submit</button>
+  </form>
+
+  <div id="results"></div>
+
+  <script src="src/jbdeditor.js"></script>
+  <script>
+    const results = [];
+    function assert(desc, condition) {
+      results.push({ desc, pass: !!condition });
+    }
+
+    try {
+      assert('JBDEditor global exists', typeof JBDEditor !== 'undefined');
+      assert('JByDesignEditor global exists', typeof JByDesignEditor !== 'undefined');
+      assert('JalEditor global alias exists for backward compatibility', typeof JalEditor !== 'undefined' && JalEditor === JBDEditor);
+
+      const editor = JBDEditor.attach('#test-textarea', {
+        placeholder: 'Enter content...',
+        height: '250px',
+        autoSaveKey: 'test_autosave'
+      });
+
+      const wrapper = document.querySelector('.jbd-editor-wrapper');
+      const content = document.querySelector('.jbd-editor-content');
+      const toolbar = document.querySelector('.jbd-toolbar');
+      const source = document.querySelector('.jbd-editor-source');
+      const stats = document.querySelector('.jbd-editor-stats');
+      const draft = document.querySelector('.jbd-editor-draft-indicator');
+
+      // 1. Accessibility attributes
+      assert('Content has role="textbox"', content.getAttribute('role') === 'textbox');
+      assert('Content has aria-multiline="true"', content.getAttribute('aria-multiline') === 'true');
+      assert('Content has aria-labelledby="test-label"', content.getAttribute('aria-labelledby') === 'test-label');
+      assert('Content has aria-required="true" from required textarea', content.getAttribute('aria-required') === 'true');
+
+      // 2. Toolbar WAI-ARIA
+      assert('Toolbar has role="toolbar"', toolbar.getAttribute('role') === 'toolbar');
+      assert('Toolbar has aria-label', toolbar.hasAttribute('aria-label'));
+      const boldBtn = toolbar.querySelector('button[title*="Bold"]');
+      assert('Bold button has aria-pressed="false"', boldBtn.getAttribute('aria-pressed') === 'false');
+      assert('Bold button has aria-keyshortcuts="Control+B"', boldBtn.getAttribute('aria-keyshortcuts') === 'Control+B');
+      const boldIcon = boldBtn.querySelector('.jbd-flaticon, svg, .material-symbols-outlined');
+      assert('Toolbar icon has aria-hidden="true"', boldIcon.getAttribute('aria-hidden') === 'true');
+
+      // 2b. Verified fonts and font-size removed from toolbar
+      assert('Font family select is removed from toolbar', toolbar.querySelector('.jbd-font-select') === null);
+      assert('Font size select is removed from toolbar', toolbar.querySelector('.jbd-size-select') === null);
+
+      // 3. Status Bar Live Regions
+      assert('Stats has role="status"', stats.getAttribute('role') === 'status');
+      assert('Stats has aria-live="polite"', stats.getAttribute('aria-live') === 'polite');
+      assert('Draft indicator has role="status"', draft.getAttribute('role') === 'status');
+      assert('Draft indicator has aria-live="polite"', draft.getAttribute('aria-live') === 'polite');
+
+      // 4. Form Sync & FormData
+      editor.setHTML('<p>Updated Content</p>');
+      editor.syncToTarget();
+      const textarea = document.getElementById('test-textarea');
+      assert('Textarea value synced with editor', textarea.value === '<p>Updated Content</p>');
+
+      const formData = new FormData(document.getElementById('test-form'));
+      assert('FormData captures updated HTML', formData.get('article') === '<p>Updated Content</p>');
+
+      // 5. Semantic Table Output with WCAG scope="col" and scope="row"
+      const tableBoth = TableManager.createTable({ rows: 2, cols: 2, headerType: 'both', caption: 'Sales Data', bordered: true });
+      const thCol = tableBoth.querySelector('thead th[scope="col"]');
+      const thRow = tableBoth.querySelector('tbody th[scope="row"]');
+      const tableCap = tableBoth.querySelector('caption');
+      assert('Table column header has scope="col"', thCol !== null);
+      assert('Table row header has scope="row"', thRow !== null);
+      assert('Table has accessible caption', tableCap && tableCap.textContent === 'Sales Data');
+
+      // 5b. Table Dialog Mandatory Caption Validation
+      let dialogConfirmed = false;
+      let dialogConfirmedData = null;
+      Dialog.openTableDialog({
+        onConfirm: (data) => {
+          dialogConfirmed = true;
+          dialogConfirmedData = data;
+        }
+      });
+      const tableOverlay = document.querySelector('.jbd-dialog-overlay');
+      const captionInput = tableOverlay.querySelector('#jbd-table-caption');
+      const captionError = tableOverlay.querySelector('#jbd-table-caption-error');
+      const createTableBtn = tableOverlay.querySelector('.jbd-btn-primary');
+
+      // Attempt to submit with empty caption
+      captionInput.value = '';
+      createTableBtn.click();
+      assert('Modal blocks submission when caption is empty', dialogConfirmed === false);
+      assert('Caption input flagged with aria-invalid="true"', captionInput.getAttribute('aria-invalid') === 'true');
+      assert('Caption error alert is visible', captionError && captionError.style.display !== 'none');
+
+      // Type caption and verify input event clears error
+      captionInput.value = 'Q3 Regional Sales';
+      captionInput.dispatchEvent(new Event('input'));
+      assert('Typing into caption removes aria-invalid', !captionInput.hasAttribute('aria-invalid'));
+      assert('Typing into caption hides error alert', captionError.style.display === 'none');
+
+      // Submit with valid caption
+      createTableBtn.click();
+      assert('Modal confirms successfully with valid caption', dialogConfirmed === true);
+      assert('Confirmed data contains entered caption', dialogConfirmedData && dialogConfirmedData.caption === 'Q3 Regional Sales');
+      Dialog.closeAll();
+
+      // 6. Keyboard Shortcut: Alt+F10 Toolbar Focus
+      const altF10Event = new KeyboardEvent('keydown', { key: 'F10', altKey: true, bubbles: true });
+      content.dispatchEvent(altF10Event);
+      // Verify toolbar has focus or first item has tabindex="0"
+      const firstTab = toolbar.querySelector('[tabindex="0"]');
+      assert('Toolbar has roving tabindex element initialized', firstTab !== null);
+
+      // 7. HTML Beautifier & Source View Clean Formatting
+      const rawMessyHTML = '<p>Hello <b>World</b></p><ul><li>First</li><li>Second</li></ul>';
+      const beautified = JBDEditor.formatHTML(rawMessyHTML);
+      assert('formatHTML produces multi-line indented code', beautified.includes('\n') && beautified.includes('  <li>'));
+
+      editor.setHTML(rawMessyHTML);
+      editor.toggleSourceView();
+      assert('Source view is open', editor.isSourceMode === true);
+      assert('Source textarea contains formatted indented HTML', source.value.includes('\n') && source.value.includes('  <li>'));
+      editor.toggleSourceView();
+      assert('Source view is closed and content restored', editor.isSourceMode === false);
+
+      // 8. Toolbar Customization & Presets
+      // 8a. Custom Button Object & insertHTML
+      let customClicked = false;
+      const customBtnSpec = {
+        name: 'customStamp',
+        title: 'Insert Stamp',
+        icon: '<span class="test-stamp">STAMP</span>',
+        action: (ed) => {
+          customClicked = true;
+          ed.insertHTML('<mark>APPROVED</mark>');
+        }
+      };
+
+      function createTestTextarea() {
+        const ta = document.createElement('textarea');
+        document.body.appendChild(ta);
+        return ta;
+      }
+
+      const customTa = createTestTextarea();
+      const customEd = JBDEditor.attach(customTa, {
+        toolbar: [
+          ['bold'],
+          '|',
+          [customBtnSpec]
+        ]
+      });
+      const customBtnEl = customEd.wrapper.querySelector('button[title="Insert Stamp"]');
+      assert('Custom button rendered in toolbar', customBtnEl !== null);
+      assert('Custom button has accessible aria-label', customBtnEl && customBtnEl.getAttribute('aria-label') === 'Insert Stamp');
+      customBtnEl.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      assert('Custom button action executed', customClicked === true);
+      assert('insertHTML injected content', customEd.getHTML().includes('<mark>APPROVED</mark>'));
+      customEd.destroy();
+      customTa.remove();
+
+      // 8b. Toolbar Presets ('basic', 'minimal')
+      const basicTa = createTestTextarea();
+      const basicEd = JBDEditor.attach(basicTa, { toolbar: 'basic' });
+      assert('Basic preset has formatBlock select', basicEd.wrapper.querySelector('.jbd-heading-select') !== null);
+      assert('Basic preset has bold button', basicEd.wrapper.querySelector('button[title*="Bold"]') !== null);
+      assert('Basic preset includes table button', basicEd.wrapper.querySelector('button[title*="Table"]') !== null);
+      assert('Basic preset includes template button', basicEd.wrapper.querySelector('button[title*="Template"]') !== null);
+      assert('Basic preset excludes find button', basicEd.wrapper.querySelector('button[title*="Find"]') === null);
+      basicEd.destroy();
+      basicTa.remove();
+
+      const minimalTa = createTestTextarea();
+      const minimalEd = JBDEditor.attach(minimalTa, { toolbar: 'minimal' });
+      assert('Minimal preset has bold button', minimalEd.wrapper.querySelector('button[title*="Bold"]') !== null);
+      assert('Minimal preset excludes formatBlock select', minimalEd.wrapper.querySelector('.jbd-heading-select') === null);
+      minimalEd.destroy();
+      minimalTa.remove();
+
+      // 8c. Toolbar Disabled (toolbar: false)
+      const noToolbarTa = createTestTextarea();
+      const noToolbarEd = JBDEditor.attach(noToolbarTa, { toolbar: false });
+      assert('Editor can be created without toolbar (toolbar: false)', noToolbarEd.wrapper.querySelector('.jbd-toolbar') === null);
+      assert('noToolbarEd getHTML/setHTML works cleanly', noToolbarEd.getHTML() !== null);
+      noToolbarEd.destroy();
+      noToolbarTa.remove();
+
+      // 9. FormatBlock Auto-Selection Tracking Cursor / Selection
+      editor.setHTML('<h1>Heading One</h1><h2>Heading Two</h2><p>Paragraph text</p><blockquote>A notable quote</blockquote>');
+      const headingSelect = toolbar.querySelector('.jbd-heading-select');
+
+      const h1El = content.querySelector('h1');
+      const testRange = document.createRange();
+      testRange.selectNodeContents(h1El);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(testRange);
+      editor.toolbar.updateActiveStates();
+      assert('Heading select auto-syncs to <h1> when cursor in H1', headingSelect.value === '<h1>');
+
+      const h2El = content.querySelector('h2');
+      testRange.selectNodeContents(h2El);
+      sel.removeAllRanges();
+      sel.addRange(testRange);
+      editor.toolbar.updateActiveStates();
+      assert('Heading select auto-syncs to <h2> when cursor in H2', headingSelect.value === '<h2>');
+
+      const bqEl = content.querySelector('blockquote');
+      testRange.selectNodeContents(bqEl);
+      sel.removeAllRanges();
+      sel.addRange(testRange);
+      editor.toolbar.updateActiveStates();
+      assert('Heading select auto-syncs to <blockquote> when cursor in Blockquote', headingSelect.value === '<blockquote>');
+
+      const pEl = content.querySelector('p');
+      testRange.selectNodeContents(pEl);
+      sel.removeAllRanges();
+      sel.addRange(testRange);
+      editor.toolbar.updateActiveStates();
+      assert('Heading select auto-syncs to <p> when cursor in Paragraph', headingSelect.value === '<p>');
+
+      // 10. HTML Block Template System Tests
+      const templateBtn = toolbar.querySelector('button[title*="Template"]');
+      assert('Template button exists in full/main toolbar', templateBtn !== null);
+      assert('Template button has accessible aria-label', templateBtn && templateBtn.getAttribute('aria-label') === 'Insert Block Template');
+
+      // 10b. DEFAULT_BLOCK_TEMPLATES registry & ADA / WCAG 2.2 AA Semantics
+      assert('DEFAULT_BLOCK_TEMPLATES registry has entries', Array.isArray(JBDEditor.DEFAULT_BLOCK_TEMPLATES) && JBDEditor.DEFAULT_BLOCK_TEMPLATES.length >= 8);
+      const calloutInfo = JBDEditor.DEFAULT_BLOCK_TEMPLATES.find(t => t.id === 'callout-info');
+      assert('Callout info template exists and has html', calloutInfo && calloutInfo.html.includes('jbd-callout-info'));
+      assert('Callout info uses semantic <aside> tag', calloutInfo && calloutInfo.html.startsWith('<aside'));
+      assert('Callout info has accessible landmark aria-label', calloutInfo && calloutInfo.html.includes('aria-label='));
+      assert('Callout info badge has aria-hidden="true" to prevent screen reader redundancy', calloutInfo && calloutInfo.html.includes('aria-hidden="true"'));
+
+      const calloutWarn = JBDEditor.DEFAULT_BLOCK_TEMPLATES.find(t => t.id === 'callout-warning');
+      assert('Warning callout uses semantic <aside> with aria-label', calloutWarn && calloutWarn.html.startsWith('<aside') && calloutWarn.html.includes('aria-label='));
+
+      const calloutSuccess = JBDEditor.DEFAULT_BLOCK_TEMPLATES.find(t => t.id === 'callout-success');
+      assert('Success callout uses semantic <aside> with aria-label', calloutSuccess && calloutSuccess.html.startsWith('<aside') && calloutSuccess.html.includes('aria-label='));
+
+      const grid2 = JBDEditor.DEFAULT_BLOCK_TEMPLATES.find(t => t.id === 'grid-2col');
+      assert('2-Column layout uses semantic <section> with landmark aria-label', grid2 && grid2.html.startsWith('<section') && grid2.html.includes('aria-label='));
+
+      const grid3 = JBDEditor.DEFAULT_BLOCK_TEMPLATES.find(t => t.id === 'grid-3col');
+      assert('3-Column cards use <section> container with <article> items', grid3 && grid3.html.startsWith('<section') && grid3.html.includes('<article'));
+
+      const hero = JBDEditor.DEFAULT_BLOCK_TEMPLATES.find(t => t.id === 'hero-banner');
+      assert('Hero banner uses semantic <header> with aria-label', hero && hero.html.startsWith('<header') && hero.html.includes('aria-label='));
+      assert('Hero CTA button has meaningful href and aria-label', hero && hero.html.includes('href="#learn-more"') && hero.html.includes('aria-label='));
+
+      const panelInfo = JBDEditor.DEFAULT_BLOCK_TEMPLATES.find(t => t.id === 'panel-info');
+      assert('Info panel uses semantic <section> with aria-label', panelInfo && panelInfo.html.startsWith('<section') && panelInfo.html.includes('aria-label="Information Panel"'));
+      assert('Info panel has header icon and badge with aria-hidden="true"', panelInfo && panelInfo.html.includes('jbd-panel-icon') && panelInfo.html.includes('jbd-panel-badge'));
+
+      const panelWarn = JBDEditor.DEFAULT_BLOCK_TEMPLATES.find(t => t.id === 'panel-warning');
+      assert('Warning panel uses semantic <section> with aria-label', panelWarn && panelWarn.html.startsWith('<section') && panelWarn.html.includes('aria-label="Warning Panel"'));
+
+      const panelSuccess = JBDEditor.DEFAULT_BLOCK_TEMPLATES.find(t => t.id === 'panel-success');
+      assert('Success panel uses semantic <section> with aria-label', panelSuccess && panelSuccess.html.startsWith('<section') && panelSuccess.html.includes('aria-label="Success Panel"'));
+
+      const panelAlert = JBDEditor.DEFAULT_BLOCK_TEMPLATES.find(t => t.id === 'panel-alert');
+      assert('Alert panel uses semantic <section> with aria-label', panelAlert && panelAlert.html.startsWith('<section') && panelAlert.html.includes('aria-label="Alert Panel"'));
+
+      const quote = JBDEditor.DEFAULT_BLOCK_TEMPLATES.find(t => t.id === 'quote-card');
+      assert('Quote card uses semantic <figure>, <blockquote>, and <cite>', quote && quote.html.includes('<figure') && quote.html.includes('<blockquote') && quote.html.includes('<cite>'));
+
+      const faqBlock = JBDEditor.DEFAULT_BLOCK_TEMPLATES.find(t => t.id === 'faq-block');
+      assert('FAQ block uses semantic <section> with aria-label', faqBlock && faqBlock.html.startsWith('<section') && faqBlock.html.includes('aria-label="Frequently Asked Questions"'));
+      assert('FAQ block is always open with no <details> or <summary>', faqBlock && !faqBlock.html.includes('<details') && !faqBlock.html.includes('<summary>') && faqBlock.html.includes('jbd-faq-question'));
+      assert('FAQ block includes accessible Add Question & Answer button with icon', faqBlock && faqBlock.html.includes('data-jbd-faq-add="true"') && faqBlock.html.includes('jbd-faq-add-btn'));
+
+      const timeline = JBDEditor.DEFAULT_BLOCK_TEMPLATES.find(t => t.id === 'timeline-steps');
+      assert('Timeline uses semantic ordered list <ol> and <li> items', timeline && timeline.html.includes('<ol') && timeline.html.includes('<li'));
+      assert('Timeline visual number badges have aria-hidden="true"', timeline && timeline.html.includes('aria-hidden="true"'));
+      assert('Timeline includes accessible Add Step button with icon', timeline && timeline.html.includes('data-jbd-timeline-add="true"') && timeline.html.includes('jbd-timeline-add-btn'));
+
+      const newsArticle = JBDEditor.DEFAULT_BLOCK_TEMPLATES.find(t => t.id === 'news-article');
+      assert('News article template exists and has html', newsArticle && !!newsArticle.html);
+      assert('News article uses semantic <article> with aria-label', newsArticle && newsArticle.html.startsWith('<article') && newsArticle.html.includes('aria-label="News Article"'));
+      assert('News article contains semantic &lt;header&gt;, &lt;time&gt;, &lt;figure&gt;, and &lt;figcaption&gt;', newsArticle && newsArticle.html.includes('<header') && newsArticle.html.includes('<time') && newsArticle.html.includes('<figure') && newsArticle.html.includes('<figcaption'));
+      assert('News article image has meaningful alt attribute', newsArticle && newsArticle.html.includes('<img') && newsArticle.html.includes('alt="'));
+
+      // 10c. Programmatic insertTemplate API and interactive FAQ item addition
+      editor.setHTML('<p>Existing content</p>');
+      editor.insertTemplate(faqBlock.html);
+      assert('insertTemplate injects FAQ block template', editor.getHTML().includes('jbd-faq-block'));
+      const initialFaqItemsCount = editor.contentArea.querySelectorAll('.jbd-faq-item').length;
+      assert('Initial FAQ has 2 items', initialFaqItemsCount === 2);
+
+      // Trigger FAQ add question button
+      const addBtn = editor.contentArea.querySelector('.jbd-faq-add-btn');
+      assert('FAQ Add button rendered in editor content', addBtn !== null);
+      addBtn.click();
+      const updatedFaqItemsCount = editor.contentArea.querySelectorAll('.jbd-faq-item').length;
+      assert('Clicking Add Question appends a new FAQ item', updatedFaqItemsCount === 3);
+
+      // Interactive Step Timeline addition
+      editor.setHTML('<p>Existing content</p>');
+      editor.insertTemplate(timeline.html);
+      assert('insertTemplate injects Timeline template', editor.getHTML().includes('jbd-timeline-container'));
+      const initialStepsCount = editor.contentArea.querySelectorAll('.jbd-step').length;
+      assert('Initial timeline has 2 steps', initialStepsCount === 2);
+
+      // Trigger Timeline add step button
+      const addStepBtn = editor.contentArea.querySelector('.jbd-timeline-add-btn');
+      assert('Timeline Add Step button rendered in editor content', addStepBtn !== null);
+      addStepBtn.click();
+      const updatedSteps = editor.contentArea.querySelectorAll('.jbd-step');
+      assert('Clicking Add Step appends a new timeline step', updatedSteps.length === 3);
+      const lastBadge = updatedSteps[updatedSteps.length - 1].querySelector('.jbd-step-badge');
+      assert('New step has sequential badge number 3', lastBadge && lastBadge.textContent.trim() === '3');
+
+      editor.setHTML('<p>Existing content</p>');
+      editor.insertTemplate(calloutInfo.html);
+      const insertedHTML = editor.getHTML();
+      assert('insertTemplate injects block template HTML', insertedHTML.includes('jbd-callout-info'));
+      assert('insertTemplate syncs with underlying textarea', textarea.value.includes('jbd-callout-info'));
+
+      editor.setHTML('<p>Existing content</p>');
+      editor.insertTemplate(newsArticle.html);
+      assert('insertTemplate injects News Article template', editor.getHTML().includes('jbd-article'));
+      assert('News article contains headline and author', editor.contentArea.querySelector('.jbd-article-headline') !== null && editor.contentArea.querySelector('.jbd-article-author') !== null);
+
+      // 10d. Template Dialog UI & Live Preview
+      let templateSelectedData = null;
+      Dialog.openTemplateDialog({
+        onSelect: (html, tmpl) => {
+          templateSelectedData = tmpl;
+        }
+      });
+      const tmplOverlay = document.querySelector('.jbd-dialog-overlay');
+      assert('Template dialog overlay rendered', tmplOverlay !== null);
+      assert('Template dialog has jbd-dialog-wide class', tmplOverlay.querySelector('.jbd-dialog.jbd-dialog-wide') !== null);
+      const categoryPills = tmplOverlay.querySelectorAll('.jbd-category-pill');
+      assert('Category filter pills rendered', categoryPills.length > 1);
+      const tmplCards = tmplOverlay.querySelectorAll('.jbd-template-card');
+      assert('Template cards rendered in list pane', tmplCards.length > 0);
+      const listPane = tmplOverlay.querySelector('.jbd-template-list-pane');
+      assert('Left template list pane has isolated scroll (overflow-y auto)', listPane && window.getComputedStyle(listPane).overflowY === 'auto');
+      const previewCanvas = tmplOverlay.querySelector('.jbd-template-preview-canvas');
+      assert('Template preview canvas rendered', previewCanvas !== null);
+
+      // Select card and confirm
+      if (tmplCards.length > 1) {
+        tmplCards[1].click();
+      }
+      const insertTmplBtn = tmplOverlay.querySelector('.jbd-btn-primary');
+      insertTmplBtn.click();
+      assert('Template dialog onSelect executed on insert button click', templateSelectedData !== null);
+      Dialog.closeAll();
+
+      // 10e. Custom Templates configuration option
+      const customTmplTa = createTestTextarea();
+      const customTmplEd = JBDEditor.attach(customTmplTa, {
+        templates: [
+          { id: 'custom-card', title: 'Custom Notice', category: 'Alerts', description: 'Custom note', html: '<div class="custom-card">Alert!</div>' }
+        ]
+      });
+      assert('Custom templates configuration recognized', customTmplEd.options.templates.length === 1);
+      customTmplEd.insertTemplate(customTmplEd.options.templates[0].html);
+      assert('Custom template inserted into custom editor', customTmplEd.getHTML().includes('custom-card'));
+      customTmplEd.destroy();
+      customTmplTa.remove();
+
+      // 11. Easy Integration Tests
+      // 11a. JBDEditor.get and instance registry
+      assert('JBDEditor.get returns instance by element', JBDEditor.get(textarea) === editor);
+      assert('JBDEditor.get returns instance by selector string', JBDEditor.get('#test-textarea') === editor);
+
+      // 11b. Event listeners (on, emit, onChange)
+      let changeFired = false;
+      let changePayload = '';
+      editor.on('change', (html) => {
+        changeFired = true;
+        changePayload = html;
+      });
+      editor.setHTML('<p>Event test content</p>');
+      editor.syncToTarget();
+      assert('editor.on("change") fired on syncToTarget', changeFired && changePayload.includes('Event test content'));
+
+      // 11c. Helper methods: isEmpty, insertHTML, insertText
+      assert('editor.isEmpty() returns false when content exists', !editor.isEmpty());
+      editor.setHTML('');
+      assert('editor.isEmpty() returns true when empty', editor.isEmpty());
+      editor.insertHTML('<p><strong>Injected HTML</strong></p>');
+      assert('editor.insertHTML injected markup', editor.getHTML().includes('<strong>Injected HTML</strong>'));
+      editor.insertText(' Plain Text Note');
+      assert('editor.insertText injected text', editor.getHTML().includes('Plain Text Note'));
+
+      // 11d. Form submit integration
+      let formSubmitted = false;
+      const testForm = document.getElementById('test-form');
+      const submitHandler = (e) => {
+        e.preventDefault();
+        formSubmitted = true;
+      };
+      testForm.addEventListener('submit', submitHandler);
+      testForm.dispatchEvent(new Event('submit', { cancelable: true }));
+      assert('Form submit event triggers sync and allows form handling', formSubmitted && textarea.value.includes('Injected HTML'));
+      testForm.removeEventListener('submit', submitHandler);
+
+      // 11e. Declarative HTML integration via data-attributes & initAll()
+      const decTa = document.createElement('textarea');
+      decTa.setAttribute('data-jbd-editor', 'true');
+      decTa.setAttribute('data-jbd-toolbar', 'minimal');
+      decTa.setAttribute('data-jbd-height', '280px');
+      decTa.setAttribute('data-jbd-placeholder', 'Declarative Placeholder');
+      decTa.value = '<p>Declarative initial</p>';
+      document.body.appendChild(decTa);
+
+      const inited = JBDEditor.initAll('[data-jbd-editor]');
+      assert('JBDEditor.initAll finds and attaches declarative textarea', inited.length === 1);
+      const decEd = inited[0];
+      assert('Declarative editor height applied from data-attribute', decEd.options.height === '280px');
+      assert('Declarative editor placeholder applied from data-attribute', decEd.options.placeholder === 'Declarative Placeholder');
+      assert('Declarative editor target marked with data-jbd-initialized', decTa.getAttribute('data-jbd-initialized') === 'true');
+      assert('Calling attach on already attached element returns existing instance without duplicating', JBDEditor.attach(decTa) === decEd);
+
+      // 11f. JBDEditor.detach helper
+      const detached = JBDEditor.detach(decTa);
+      assert('JBDEditor.detach destroys instance and unbinds', detached && JBDEditor.get(decTa) === null);
+      decTa.remove();
+
+      // 11g. Toolbar Article preset exists
+      assert('Article toolbar preset exists in JBDEditor.TOOLBAR_PRESETS', JBDEditor.TOOLBAR_PRESETS && !!JBDEditor.TOOLBAR_PRESETS.article);
+
+      // 12. Inline Toolbar (Floating / Bubble Selection Toolbar) Tests
+      assert('InlineToolbar class is exported', typeof InlineToolbar === 'function' && typeof JBDEditor.InlineToolbar === 'function');
+      assert('JBD_DEFAULT_INLINE_TOOLBAR preset is exported', Array.isArray(JBD_DEFAULT_INLINE_TOOLBAR) && JBD_DEFAULT_INLINE_TOOLBAR.includes('bold'));
+
+      const inlineTa = document.createElement('textarea');
+      inlineTa.id = 'inline-test-ta';
+      inlineTa.value = '<p>Selectable text for inline toolbar testing.</p>';
+      document.body.appendChild(inlineTa);
+
+      const inlineEd = JBDEditor.attach(inlineTa, {
+        inlineToolbar: true
+      });
+
+      assert('inlineEd has inlineToolbar instance', inlineEd.inlineToolbar instanceof InlineToolbar);
+      assert('Inline toolbar element appended to document.body', document.body.contains(inlineEd.inlineToolbar.element));
+      assert('Inline toolbar has role="toolbar"', inlineEd.inlineToolbar.element.getAttribute('role') === 'toolbar');
+      assert('Inline toolbar has accessible aria-label', inlineEd.inlineToolbar.element.getAttribute('aria-label') === 'Inline text formatting');
+      assert('Inline toolbar initially not visible', !inlineEd.inlineToolbar.isVisible && !inlineEd.inlineToolbar.element.classList.contains('jbd-inline-toolbar-visible'));
+      assert('Inline toolbar has aria-hidden="true" when hidden', inlineEd.inlineToolbar.element.getAttribute('aria-hidden') === 'true');
+
+      // Select text inside inlineEd.contentArea
+      const pNode = inlineEd.contentArea.querySelector('p');
+      const textNode = pNode.firstChild;
+      const inlineSel = window.getSelection();
+      const range = document.createRange();
+      range.setStart(textNode, 0);
+      range.setEnd(textNode, 10);
+      inlineSel.removeAllRanges();
+      inlineSel.addRange(range);
+
+      inlineEd.inlineToolbar.position();
+      assert('Inline toolbar becomes visible on text selection', inlineEd.inlineToolbar.isVisible);
+      assert('Inline toolbar element has jbd-inline-toolbar-visible class', inlineEd.inlineToolbar.element.classList.contains('jbd-inline-toolbar-visible'));
+      assert('Inline toolbar has aria-hidden="false" when visible', inlineEd.inlineToolbar.element.getAttribute('aria-hidden') === 'false');
+      assert('Inline toolbar element top and left styles are set', !!inlineEd.inlineToolbar.element.style.top && !!inlineEd.inlineToolbar.element.style.left);
+
+      // Click bold button on inline toolbar
+      const inlineBoldBtn = inlineEd.inlineToolbar.buttonElements.get('bold');
+      assert('Inline toolbar has bold button', inlineBoldBtn !== undefined);
+      inlineBoldBtn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+      assert('Inline bold button mousedown toggled bold on selected text', inlineEd.getHTML().includes('<b>') || inlineEd.getHTML().includes('<strong>'));
+
+      // Verify all requested menu items exist in default inline toolbar
+      assert('Inline toolbar has formatBlock select', inlineEd.inlineToolbar.buttonElements.has('formatBlock'));
+      assert('Inline toolbar has italic button', inlineEd.inlineToolbar.buttonElements.has('italic'));
+      assert('Inline toolbar has underline button', inlineEd.inlineToolbar.buttonElements.has('underline'));
+      assert('Inline toolbar has alignLeft button', inlineEd.inlineToolbar.buttonElements.has('alignLeft'));
+      assert('Inline toolbar has alignCenter button', inlineEd.inlineToolbar.buttonElements.has('alignCenter'));
+      assert('Inline toolbar has alignRight button', inlineEd.inlineToolbar.buttonElements.has('alignRight'));
+      assert('Inline toolbar has alignJustify button', inlineEd.inlineToolbar.buttonElements.has('alignJustify'));
+      assert('Inline toolbar has ul button', inlineEd.inlineToolbar.buttonElements.has('ul'));
+      assert('Inline toolbar has ol button', inlineEd.inlineToolbar.buttonElements.has('ol'));
+      assert('Inline toolbar has indent button', inlineEd.inlineToolbar.buttonElements.has('indent'));
+      assert('Inline toolbar has outdent button', inlineEd.inlineToolbar.buttonElements.has('outdent'));
+      assert('Inline toolbar has link button', inlineEd.inlineToolbar.buttonElements.has('link'));
+      assert('Inline toolbar has unlink button', inlineEd.inlineToolbar.buttonElements.has('unlink'));
+
+      // Test collapse hides inline toolbar
+      inlineSel.collapseToStart();
+      inlineEd.inlineToolbar.position();
+      assert('Inline toolbar hides when selection is collapsed', !inlineEd.inlineToolbar.isVisible);
+
+      // Custom inline toolbar button configuration
+      const customInlineTa = document.createElement('textarea');
+      customInlineTa.value = '<p>Custom buttons</p>';
+      document.body.appendChild(customInlineTa);
+      const customInlineEd = JBDEditor.attach(customInlineTa, {
+        inlineToolbar: ['bold', 'italic']
+      });
+      assert('Custom inline toolbar only contains configured buttons', customInlineEd.inlineToolbar.buttonElements.has('bold') && customInlineEd.inlineToolbar.buttonElements.has('italic') && !customInlineEd.inlineToolbar.buttonElements.has('strike'));
+      customInlineEd.destroy();
+      customInlineTa.remove();
+
+      // Declarative data-jbd-inline-toolbar="true"
+      const decInlineTa = document.createElement('textarea');
+      decInlineTa.setAttribute('data-jbd-editor', 'true');
+      decInlineTa.setAttribute('data-jbd-inline-toolbar', 'true');
+      decInlineTa.value = '<p>Declarative inline</p>';
+      document.body.appendChild(decInlineTa);
+      const decInlineEds = JBDEditor.initAll(decInlineTa);
+      assert('Declarative data-jbd-inline-toolbar initializes inlineToolbar', decInlineEds.length === 1 && !!decInlineEds[0].inlineToolbar);
+      decInlineEds[0].destroy();
+      decInlineTa.remove();
+
+      // Clean up inline toolbar on destroy
+      const itEl = inlineEd.inlineToolbar.element;
+      inlineEd.destroy();
+      assert('Inline toolbar element removed from DOM on destroy', !document.body.contains(itEl));
+      inlineTa.remove();
+
+      // 13. Document Paste & Cleanup Tool Tests
+      assert('cleanDocumentHTML exists globally', typeof cleanDocumentHTML === 'function');
+      assert('JBDEditor.cleanDocumentHTML static method exists', typeof JBDEditor.cleanDocumentHTML === 'function');
+      assert('JBDEditor.cleanHTML alias exists', typeof JBDEditor.cleanHTML === 'function');
+
+      // 13a. cleanDocumentHTML removes styles and classes
+      const dirtyHtml = '<p class="MsoNormal my-custom-class" style="color: red; font-family: Calibri; font-size: 14pt; margin: 0;">Text with <span class="c1" style="font-weight: bold; background: yellow;">Bold Word</span> and <span class="c2" style="font-style: italic;">Italic Word</span>.</p>';
+      const cleaned = cleanDocumentHTML(dirtyHtml);
+      assert('cleanDocumentHTML removes style attributes', !cleaned.includes('style=') && !cleaned.includes('color:') && !cleaned.includes('Calibri'));
+      assert('cleanDocumentHTML removes class attributes', !cleaned.includes('class="MsoNormal"') && !cleaned.includes('my-custom-class') && !cleaned.includes('class="c1"'));
+      assert('cleanDocumentHTML converts inline bold to semantic strong/b tag', cleaned.includes('<strong>Bold Word</strong>') || cleaned.includes('<b>Bold Word</b>'));
+      assert('cleanDocumentHTML converts inline italic to semantic em/i tag', cleaned.includes('<em>Italic Word</em>') || cleaned.includes('<i>Italic Word</i>'));
+      assert('cleanDocumentHTML unwraps redundant spans', !cleaned.includes('<span'));
+
+      // 13b. Office artifacts and conditional comments
+      const wordHtml = '<!--[if gte mso 9]><xml><w:WordDocument></w:WordDocument></xml><![endif]--><p class="MsoNormal" style="mso-margin-top-alt:auto"><span style="font-size:12.0pt">Word content</span><o:p></o:p></p>';
+      const cleanedWord = cleanDocumentHTML(wordHtml);
+      assert('cleanDocumentHTML removes Office conditional comments', !cleanedWord.includes('mso 9') && !cleanedWord.includes('WordDocument'));
+      assert('cleanDocumentHTML removes <o:p> tags', !cleanedWord.includes('o:p'));
+      assert('cleanDocumentHTML cleans Word paragraphs', cleanedWord.includes('<p>Word content</p>'));
+
+      // 13c. Google Docs fake-bold wrapper (<b style="font-weight:normal">)
+      const gdocsHtml = '<b style="font-weight:normal" id="docs-internal-guid-123"><p class="c1" style="margin:0"><span style="color:#000">Normal unbolded text</span></p></b>';
+      const cleanedGDocs = cleanDocumentHTML(gdocsHtml);
+      assert('cleanDocumentHTML unwraps Google Docs fake-bold wrapper', !cleanedGDocs.startsWith('<b>') && !cleanedGDocs.includes('docs-internal-guid'));
+      assert('cleanDocumentHTML outputs clean paragraph', cleanedGDocs.includes('<p>Normal unbolded text</p>'));
+
+      // 13d. Table cleanup and accessible table class
+      const dirtyTable = '<table class="MsoTableGrid old-table" style="width:100%; border:1px solid black;" border="1" cellpadding="2"><tbody><tr style="height:20px"><td class="cell" style="background:#fff">Cell 1</td></tr></tbody></table>';
+      const cleanedTable = cleanDocumentHTML(dirtyTable);
+      assert('cleanDocumentHTML applies jbd-table class to tables', cleanedTable.includes('class="jbd-table jbd-table-bordered"'));
+      assert('cleanDocumentHTML removes style, border, cellpadding from table', !cleanedTable.includes('border="1"') && !cleanedTable.includes('cellpadding') && !cleanedTable.includes('background:'));
+      assert('cleanDocumentHTML removes style and class from tr and td', !cleanedTable.includes('class="cell"') && !cleanedTable.includes('height:20px'));
+
+      // 13e. editor.cleanDocument() instance method
+      editor.setHTML('<div class="bad-wrapper" style="padding: 10px;"><p class="p-red" style="color: purple;">Dirty content</p></div>');
+      editor.cleanDocument();
+      const editorCleaned = editor.getHTML();
+      assert('editor.cleanDocument removes styles and classes from editor', !editorCleaned.includes('style=') && !editorCleaned.includes('class=') && editorCleaned.includes('Dirty content'));
+
+      // 13f. editor.cleanUp() and editor.cleanSelection() methods exist
+      assert('editor.cleanUp method exists', typeof editor.cleanUp === 'function');
+      assert('editor.cleanSelection method exists', typeof editor.cleanSelection === 'function');
+
+      // 13g. Toolbar cleanup button exists and works
+      const cleanupBtn = toolbar.querySelector('button[title*="Clean Up Document"]');
+      assert('Toolbar includes Clean Up Document button', cleanupBtn !== null);
+      if (cleanupBtn) {
+        editor.setHTML('<p class="foo" style="color:green;">Another dirty text</p>');
+        cleanupBtn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+        assert('Toolbar cleanup button triggers cleanDocument', !editor.getHTML().includes('class="foo"') && !editor.getHTML().includes('style='));
+      }
+
+      // 13h. Automated Paste Event Cleanup: verifies styles and classes are stripped on paste
+      editor.setHTML('<p>Before paste</p>');
+      const pasteEvent = new Event('paste', { bubbles: true, cancelable: true });
+      const pasteData = '<p class="p-pasted" style="font-family: Arial; font-size: 18px; color: blue;"><strong>Pasted clean text</strong></p>';
+      pasteEvent.clipboardData = {
+        getData: (type) => (type === 'text/html' ? pasteData : 'Pasted clean text')
+      };
+      editor.contentArea.dispatchEvent(pasteEvent);
+      assert('Editor paste event is intercepted and default prevented', pasteEvent.defaultPrevented);
+      // Verify cleanPaste option is enabled by default
+      assert('editor.options.cleanPaste is true by default', editor.options.cleanPaste === true);
+
+      editor.destroy();
+      assert('Destroy restores textarea visibility', textarea.style.display === '');
+      assert('Destroy removes wrapper DOM', document.querySelector('.jbd-editor-wrapper') === null);
+      assert('Destroy unregisters from JBDEditor.get', JBDEditor.get(textarea) === null);
+
+    } catch (err) {
+      results.push({ desc: 'Exception during tests: ' + err.message, pass: false });
+    }
+
+    const container = document.getElementById('results');
+    const allPassed = results.every(r => r.pass);
+    container.innerHTML = `<h2 id="summary" data-passed="${allPassed}">${allPassed ? 'ALL TESTS PASSED' : 'SOME TESTS FAILED'}</h2><ul>` +
+      results.map(r => `<li style="color:${r.pass ? 'green' : 'red'}">${r.pass ? '[PASS]' : '[FAIL]'} ${r.desc}</li>`).join('') +
+      '</ul>';
+  </script>
+</body>
+</html>
