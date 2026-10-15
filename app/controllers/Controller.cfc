@@ -32,6 +32,7 @@ component extends="wheels.Controller" {
 		if (local.ctrl == "sessions" || local.ctrl == "up") return true;
 		if (local.ctrl == "forms" && (local.act == "submit" || local.act == "preview")) return true;
 		if (local.ctrl == "jobs" && (local.act == "publiclist" || local.act == "publicview" || local.act == "apply" || local.act == "submitapplication")) return true;
+		if (local.ctrl == "events" && (local.act == "exportics" || local.act == "ics")) return true;
 		return false;
 	}
 

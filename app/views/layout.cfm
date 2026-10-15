@@ -26,7 +26,8 @@
 
 			<!--- Our custom CMS Admin stylesheet inspired by Mashable Light --->
 			<link href="/stylesheets/admin-theme.css?v=3.0" media="all" rel="stylesheet" type="text/css">
-			<link href="/stylesheets/jbdeditor.css?v=1.0" media="all" rel="stylesheet" type="text/css">
+			<link href="/stylesheets/jbdeditor.css?v=1.5" media="all" rel="stylesheet" type="text/css">
+			<link href="/stylesheets/jbd-templates.css?v=1.0" media="all" rel="stylesheet" type="text/css">
 			<cfif structKeyExists(params, "controller") and params.controller eq "forms">
 				<link href="/stylesheets/form-builder.css?v=2.3" media="all" rel="stylesheet" type="text/css">
 			</cfif>
@@ -521,8 +522,18 @@
 										<cfoutput>#svgIcon(name="chevron-right", size=14, class="nav-caret")#</cfoutput>
 									</a>
 									<ul class="nav-submenu">
-										<li class="submenu-item <cfoutput>#(structKeyExists(params, 'controller') and params.controller eq 'pages' and structKeyExists(params, 'action') and params.action eq 'index' ? 'active' : '')#</cfoutput>"><a href="<cfoutput>#urlFor(controller='pages', action='index')#</cfoutput>" class="submenu-link">All Pages</a></li>
+										<li class="submenu-item <cfoutput>#(structKeyExists(params, 'controller') and params.controller eq 'pages' and structKeyExists(params, 'action') and (params.action eq 'index' or params.action eq 'edit') ? 'active' : '')#</cfoutput>"><a href="<cfoutput>#urlFor(controller='pages', action='index')#</cfoutput>" class="submenu-link">All Pages</a></li>
+										<li class="submenu-item <cfoutput>#(structKeyExists(params, 'controller') and params.controller eq 'pages' and structKeyExists(params, 'action') and lCase(params.action) eq 'howdoi' ? 'active' : '')#</cfoutput>"><a href="<cfoutput>#urlFor(controller='pages', action='howDoI')#</cfoutput>" class="submenu-link">How Do I</a></li>
 									</ul>
+								</li>
+
+								<li class="nav-item <cfoutput>#(structKeyExists(params, 'controller') and params.controller eq 'events' ? 'active' : '')#</cfoutput>">
+									<a href="<cfoutput>#urlFor(controller='events', action='index')#</cfoutput>" class="nav-link">
+										<span class="nav-link-main">
+											<span class="nav-icon"><cfoutput>#svgIcon(name="calendar", size=18)#</cfoutput></span>
+											<span class="nav-text">Events / Calendar</span>
+										</span>
+									</a>
 								</li>
 
 								<li class="nav-item <cfoutput>#(structKeyExists(params, 'controller') and params.controller eq 'media' ? 'active' : '')#</cfoutput>">
@@ -639,7 +650,7 @@
 						</cfif>
 
 						<!--- Navigation Group: ADMINISTRATION --->
-						<cfif isAdmin or (structKeyExists(params, 'controller') and listFindNoCase('users,workspaces', params.controller))>
+						<cfif isAdmin or (structKeyExists(params, 'controller') and listFindNoCase('users,workspaces,settings', params.controller))>
 							<div class="nav-group">
 								<div class="nav-group-title">Administration</div>
 								<ul class="sidebar-nav">
@@ -684,7 +695,7 @@
 										</a>
 									</li>
 
-									<li class="nav-item has-submenu">
+									<li class="nav-item has-submenu <cfoutput>#(structKeyExists(params, 'controller') and params.controller eq 'settings' ? 'open active' : '')#</cfoutput>">
 										<a href="javascript:void(0)" class="nav-link">
 											<span class="nav-link-main">
 												<span class="nav-icon"><cfoutput>#svgIcon(name="settings", size=18)#</cfoutput></span>
@@ -693,6 +704,7 @@
 											<cfoutput>#svgIcon(name="chevron-right", size=14, class="nav-caret")#</cfoutput>
 										</a>
 										<ul class="nav-submenu">
+											<li class="submenu-item <cfoutput>#(structKeyExists(params, 'controller') and params.controller eq 'settings' and structKeyExists(params, 'action') and params.action eq 'startup' ? 'active' : '')#</cfoutput>"><a href="<cfoutput>#urlFor(controller='settings', action='startup')#</cfoutput>" class="submenu-link">Startup &amp; Front-End (.css)</a></li>
 											<li class="submenu-item"><a href="#settings-general" class="submenu-link">General Settings</a></li>
 											<li class="submenu-item"><a href="#settings-reading" class="submenu-link">Reading &amp; SEO</a></li>
 											<li class="submenu-item"><a href="#settings-media" class="submenu-link">Media Sizes</a></li>
@@ -716,7 +728,7 @@
 					</div>
 
 					<!--- Admin Template Footer --->
-					<footer class="admin-footer">
+					<footer class="admin-footer mt-5">
 						<div>
 							&copy; <cfoutput>#Year(Now())#</cfoutput> <strong>CMS Admin</strong> &bull; Chelan County CMS Platform by Chelan County IT 
 						</div>
@@ -760,8 +772,8 @@
 			</div>
 
 			<!--- Core Vanilla JS Interactions --->
-			<cfoutput>#javaScriptIncludeTag(sources="admin")#</cfoutput>
-			<script src="/javascripts/jbdeditor.js?v=1.3" type="text/javascript"></script>
+			<script src="/javascripts/admin.js?v=1.4" type="text/javascript"></script>
+			<script src="/javascripts/jbdeditor.js?v=1.5" type="text/javascript"></script>
 			<cfif structKeyExists(params, "controller") and params.controller eq "forms" and structKeyExists(params, "action") and params.action eq "builder">
 				<script src="/javascripts/form-builder.js?v=2.5" type="text/javascript"></script>
 			</cfif>

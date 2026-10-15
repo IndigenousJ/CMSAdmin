@@ -227,6 +227,10 @@ form.admin-modal-dialog {
 		</nav>
 	</div>
 	<div class="page-actions" style="display:flex; gap:0.5rem; align-items:center;">
+		<a href="#urlFor(controller='pages', action='howDoI')#" class="btn btn-outline btn-sm">
+			#svgIcon(name="help-circle", size=15)#
+			<span>How Do I</span>
+		</a>
 		<button type="button" id="btnOpenAddPageModal" class="btn btn-primary btn-sm" aria-haspopup="dialog" aria-controls="addPageModalBackdrop">
 			#svgIcon(name="plus", size=15)#
 			<span>Add Page</span>
@@ -641,10 +645,14 @@ form.admin-modal-dialog {
 		} catch (e) {}
 
 		if (!activeWs || activeWs === "global" || activeWs === "all") {
-			if (typeof window.showToast === "function") {
+			if (typeof window.adminAlert === "function") {
+				window.adminAlert({
+					title: "Workspace Required",
+					message: "Please select a workspace from the header dropdown before creating a page.",
+					type: "warning"
+				});
+			} else if (typeof window.showToast === "function") {
 				window.showToast("Please select a workspace from the header dropdown before creating a page.", "warning");
-			} else {
-				alert("Please select a workspace from the header dropdown before creating a page.");
 			}
 			return;
 		}
@@ -866,10 +874,14 @@ form.admin-modal-dialog {
 			if (typeof window.hidePageLoader === "function") window.hidePageLoader();
 			btnContinue.disabled = false;
 			btnContinue.innerHTML = '<span>Continue to Editor</span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-left:4px;"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>';
-			if (typeof window.showToast === "function") {
+			if (typeof window.adminAlert === "function") {
+				window.adminAlert({
+					title: "Workspace Required",
+					message: "Please select a workspace before creating a page.",
+					type: "warning"
+				});
+			} else if (typeof window.showToast === "function") {
 				window.showToast("Please select a workspace before creating a page.", "warning");
-			} else {
-				alert("Please select a workspace before creating a page.");
 			}
 			return;
 		}

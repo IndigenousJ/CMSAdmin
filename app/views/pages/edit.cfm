@@ -8,7 +8,12 @@
 <!--- CMS Admin 2.0 - Add / Edit Page (mockup) --->
 <style>
 	.pg-edit-grid { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:1.25rem; align-items:start; }
-	@media (max-width: 1100px) { .pg-edit-grid { grid-template-columns:1fr; } }
+	.pg-side-col { align-self:stretch; display:flex; flex-direction:column; gap:1.25rem; }
+	.pg-publish-sticky { position:sticky; top:calc(var(--header-height, 64px) + 1.25rem); z-index:10; }
+	@media (max-width: 1100px) {
+		.pg-edit-grid { grid-template-columns:1fr; }
+		.pg-publish-sticky { position:static; }
+	}
 	.pg-field { margin-bottom:1.1rem; }
 	.pg-field:last-child { margin-bottom:0; }
 	.pg-help { font-size:0.75rem; color:var(--admin-text-muted); margin-top:0.3rem; }
@@ -35,6 +40,12 @@
 	.fe-layout-card:hover { border-color:var(--admin-border-hover, ##94a3b8); }
 	.fe-layout-card:focus-visible { outline:2px solid var(--admin-primary) !important; outline-offset:2px !important; }
 	.fe-layout-card.is-selected { border-color:var(--admin-primary) !important; background:rgba(30, 58, 138, 0.04) !important; box-shadow:0 0 0 1px var(--admin-primary); }
+	.pg-meta-grid { display:grid; grid-template-columns:minmax(0, 6fr) minmax(0, 6fr); gap:1.25rem; align-items:start; }
+	@media (max-width: 768px) { .pg-meta-grid { grid-template-columns:1fr; } }
+	.pg-attr-tabs { display:inline-flex; background:var(--admin-bg, ##f1f5f9); border:1px solid var(--admin-border, ##cbd5e1); border-radius:var(--radius-md, 0.5rem); padding:0.18rem; gap:0.18rem; }
+	.pg-attr-tab { display:inline-flex; align-items:center; gap:0.35rem; padding:0.32rem 0.7rem; font-size:0.78rem; font-weight:600; border:none; border-radius:var(--radius-sm, 0.375rem); background:transparent; color:var(--admin-text-muted, ##475569); cursor:pointer; transition:all 0.15s ease; }
+	.pg-attr-tab:hover { color:var(--admin-text-main, ##0f172a); }
+	.pg-attr-tab.is-active { background:var(--admin-surface, ##ffffff); color:var(--admin-primary, ##0284c7); box-shadow:0 1px 2px rgba(15, 23, 42, 0.08); }
 </style>
 
 <div class="page-header">
@@ -109,18 +120,6 @@
 					<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem; flex-wrap:wrap; gap:0.5rem;">
 						<label for="pgContent" class="form-label" style="margin-bottom:0;">Page Content</label>
 						<div style="display:flex; align-items:center; gap:0.35rem;">
-							<button type="button" class="btn btn-outline btn-xs" id="btnEditorInsertImage" title="Insert image from Chelan County Media Library">
-								#svgIcon(name="image", size=13)#
-								<span>Media Library</span>
-							</button>
-							<button type="button" class="btn btn-outline btn-xs" id="btnEditorInsertDoc" title="Insert document or link from Media Library">
-								#svgIcon(name="file-text", size=13)#
-								<span>Document Library</span>
-							</button>
-							<button type="button" class="btn btn-outline btn-xs" id="btnEditorInsertBlock" title="Insert responsive HTML block template (callout, columns, cards, hero, panel, FAQ)">
-								#svgIcon(name="template", size=13)#
-								<span>HTML Block</span>
-							</button>
 							<button type="button" class="btn btn-outline btn-xs" id="btnEditorInsertForm" title="Embed online form into content">
 								#svgIcon(name="form", size=13)#
 								<span>Embed Form</span>
@@ -134,147 +133,140 @@
 			</div>
 		</div>
 
-		<div class="admin-card" style="margin-bottom:0;">
-			<div class="card-header">
-				<h2 class="card-title">#svgIcon(name="search", size=16)# <span>Search &amp; Sharing</span></h2>
-			</div>
-			<div class="card-body">
-				<div class="pg-field">
-					<label for="pgMetaTitle" class="form-label">Browser / Search Title</label>
-					<input type="text" id="pgMetaTitle" name="metaTitle" class="form-control" maxlength="65" value="#EncodeForHTMLAttribute(Len(Trim(page.metaTitle ?: '')) ? page.metaTitle : (page.title & (isNew ? '' : ' | Chelan County')))#" style="width:100%;" aria-describedby="pgMetaTitleHelp">
-					<div id="pgMetaTitleHelp" class="pg-help">Up to 65 characters.</div>
+		<div class="pg-meta-grid">
+			<div class="admin-card" style="margin-bottom:0;">
+				<div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+					<h2 class="card-title">#svgIcon(name="search", size=16)# <span>Search &amp; Sharing</span></h2>
+					<button type="button" class="btn btn-outline btn-xs" id="btnAutoGenerateMeta" title="Auto-generate title and summary from page title and content">
+						#svgIcon(name="sparkles", size=13)#
+						<span>Auto-Generate from Content</span>
+					</button>
 				</div>
-				<div class="pg-field">
-					<label for="pgMetaDesc" class="form-label">Summary / Meta Description</label>
-					<textarea id="pgMetaDesc" name="metaDescription" class="form-control" maxlength="160" rows="3" style="width:100%;" aria-describedby="pgMetaDescHelp">#EncodeForHTML(Len(Trim(page.metaDesc ?: '')) ? page.metaDesc : page.summary)#</textarea>
-					<div id="pgMetaDescHelp" class="pg-help">Up to 160 characters. Shown in search results.</div>
+				<div class="card-body">
+					<div class="pg-field">
+						<div style="display:flex; justify-content:space-between; align-items:center;">
+							<label for="pgMetaTitle" class="form-label" style="margin-bottom:0;">Browser / Search Title</label>
+							<span id="pgMetaTitleCount" style="font-size:0.75rem; color:var(--admin-text-muted);">0 / 65</span>
+						</div>
+						<input type="text" id="pgMetaTitle" name="metaTitle" class="form-control" maxlength="65" value="#EncodeForHTMLAttribute(Len(Trim(page.metaTitle ?: '')) ? page.metaTitle : (page.title & (isNew ? '' : ' | Chelan County')))#" style="width:100%; margin-top:0.35rem;" aria-describedby="pgMetaTitleHelp">
+						<div id="pgMetaTitleHelp" class="pg-help">Up to 65 characters. Appears in browser tab and search engine results.</div>
+					</div>
+					<div class="pg-field">
+						<div style="display:flex; justify-content:space-between; align-items:center;">
+							<label for="pgMetaDesc" class="form-label" style="margin-bottom:0;">Summary / Meta Description</label>
+							<span id="pgMetaDescCount" style="font-size:0.75rem; color:var(--admin-text-muted);">0 / 160</span>
+						</div>
+						<textarea id="pgMetaDesc" name="metaDescription" class="form-control" maxlength="160" rows="3" style="width:100%; margin-top:0.35rem;" aria-describedby="pgMetaDescHelp">#EncodeForHTML(Len(Trim(page.metaDesc ?: '')) ? page.metaDesc : page.summary)#</textarea>
+						<div id="pgMetaDescHelp" class="pg-help">Up to 160 characters. Shown in search results and social media link previews.</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="admin-card" style="margin-bottom:0;">
+				<div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+					<h2 class="card-title">#svgIcon(name="layers", size=16)# <span>Page Attributes</span></h2>
+					<div class="pg-attr-tabs" role="tablist" aria-label="Page Attributes Sections">
+						<button type="button" role="tab" id="tabBtnAttrNav" aria-selected="true" aria-controls="tabPanelAttrNav" class="pg-attr-tab is-active" data-attr-tab="nav">
+							<span>Navigation Assignment</span>
+						</button>
+						<button type="button" role="tab" id="tabBtnAttrFolder" aria-selected="false" aria-controls="tabPanelAttrFolder" class="pg-attr-tab" data-attr-tab="folder">
+							<span>Folder Explorer</span>
+						</button>
+					</div>
+				</div>
+				<div class="card-body">
+					<!--- Tab 1: Navigation Assignment --->
+					<div id="tabPanelAttrNav" role="tabpanel" aria-labelledby="tabBtnAttrNav">
+						<div class="pg-field">
+							<label for="pgParent" class="form-label">Page Assignment</label>
+							<cfset isAssignedToMenu = (structKeyExists(page, "pageType") and Val(page.pageType) eq 1) or page.parent eq "Assign to Main Menu Item" or page.parent eq "Assign to Menu Item" or (len(trim(page.parent)) gt 0 and page.parent neq "Top Level - Called from URL")>
+							<select id="pgParent" name="parent" class="form-control" style="width:100%;" aria-describedby="pgAssignmentHelp">
+								<option value="Top Level - Called from URL" <cfif not isAssignedToMenu>selected</cfif>>Top Level - Called from URL</option>
+								<option value="Assign to Main Menu Item" <cfif isAssignedToMenu>selected</cfif>>Assign to Main Menu Item</option>
+							</select>
+							<div id="pgAssignmentHelp" class="pg-help">Specify whether this page is a top-level URL route or assigned to a menu item.</div>
+						</div>
+
+						<!--- Secondary Menu Item selection: ONLY open when Assign to Main Menu Item is selected --->
+						<div id="pgMenuAssignmentWrap" class="pg-field" style="margin-top:0.75rem;<cfif not isAssignedToMenu> display:none;</cfif>" <cfif not isAssignedToMenu>hidden</cfif>>
+							<label for="pgMenuItemSelect" class="form-label" style="font-size:0.8rem; font-weight:600;">Menu Item Selection</label>
+							<select id="pgMenuItemSelect" name="menuItemTarget" class="form-control" style="width:100%;" data-initial-selected="#EncodeForHTMLAttribute(page.parent)#" data-page-workspace="#EncodeForHTMLAttribute(page.siteId)#">
+								<cfif ArrayLen(menuItemOptions) eq 0>
+									<option value="">(No menu items defined for this workspace)</option>
+								<cfelse>
+									<option value="" <cfif not len(trim(page.parent))>selected</cfif>>-- Select Menu Item --</option>
+									<cfset currentGroup = "">
+									<cfloop array="#menuItemOptions#" index="menuOpt">
+										<cfif structKeyExists(menuOpt, "group") and len(menuOpt.group) and menuOpt.group neq currentGroup>
+											<cfif len(currentGroup)></optgroup></cfif>
+											<cfset currentGroup = menuOpt.group>
+											<optgroup label="#EncodeForHTMLAttribute(currentGroup)#">
+										<cfelseif (!structKeyExists(menuOpt, "group") or !len(menuOpt.group)) and len(currentGroup)>
+											</optgroup>
+											<cfset currentGroup = "">
+										</cfif>
+										<option value="#EncodeForHTMLAttribute(menuOpt.label)#" <cfif page.parent eq menuOpt.label>selected</cfif>>#RepeatString("&nbsp;&nbsp;&nbsp;&nbsp;", Int(Val(menuOpt.depth)))##EncodeForHTML(menuOpt.label)#</option>
+									</cfloop>
+									<cfif len(currentGroup)></optgroup></cfif>
+								</cfif>
+							</select>
+							<div id="pgMenuAssignmentHelp" class="pg-help"><cfif ArrayLen(menuItemOptions) eq 0>No menu structure defined yet for this workspace.<cfelse>Select the navigation item or parent page this belongs under.</cfif></div>
+						</div>
+
+						<div class="pg-field" style="margin-top:0.75rem;">
+							<label style="display:flex; align-items:center; gap:0.55rem; font-size:0.85rem; cursor:pointer;">
+								<input type="checkbox" id="pgMenuItem" name="menuItem" <cfif page.menuItem>checked</cfif> style="width:18px; height:18px; accent-color:var(--admin-primary);" aria-describedby="pgMenuHelp">
+								<strong>Show in main menu</strong>
+							</label>
+							<div id="pgMenuHelp" class="pg-help">Adds this page to the site's top navigation.</div>
+						</div>
+					</div>
+
+					<!--- Tab 2: Folder Explorer --->
+					<div id="tabPanelAttrFolder" role="tabpanel" aria-labelledby="tabBtnAttrFolder" hidden>
+						<cfset isFolderExplorerEnabled = folderAttachedHere or (structKeyExists(page, "hasArchive") and page.hasArchive)>
+						<div class="pg-field">
+							<label style="display:flex; align-items:center; gap:0.55rem; font-size:0.85rem; cursor:pointer;">
+								<input type="checkbox" id="pgFolderListingEnabled" name="folderListingEnabled" <cfif isFolderExplorerEnabled>checked</cfif> style="width:18px; height:18px; accent-color:var(--admin-primary);" aria-controls="pgFolderListingControls">
+								<strong>Add Folder Explorer</strong>
+							</label>
+							<div class="pg-help">Show a folder explorer on this page.</div>
+						</div>
+						<div id="pgFolderListingControls" data-content-id="#page.id#" data-save-url="#urlFor(route="saveFolderExplorer")#" data-delete-url="#urlFor(route="deleteFolderExplorer")#" <cfif not isFolderExplorerEnabled>hidden</cfif>>
+							<div id="pgFolderListingItems" style="display:flex; flex-direction:column; gap:0;" aria-live="polite">
+								<cfloop array="#availableFolders#" index="folderOption">
+									<cfset folderAbs = folderOption.absolutePath>
+									<cfset folderRel = folderOption.relativePath>
+									<cfset folderLay = folderOption.layout>
+									<cfset isFolderSelected = (structKeyExists(folderOption, "selected") and folderOption.selected) or (Val(folderOption.contentId ?: 0) eq Val(page.id) and Val(page.id) gt 0)>
+									<div class="pg-subpage-row" data-id="#folderOption.id#" data-title="#EncodeForHTMLAttribute(folderOption.name)#" data-path="#EncodeForHTMLAttribute(folderOption.path)#" data-absolute-path="#EncodeForHTMLAttribute(folderAbs)#" data-relative-path="#EncodeForHTMLAttribute(folderRel)#" data-layout="#EncodeForHTMLAttribute(folderLay)#" style="padding:0.45rem 0; gap:0.5rem; border-bottom:1px dashed var(--admin-border-subtle); display:flex; align-items:center;">
+										<label style="display:flex; align-items:flex-start; gap:0.5rem; flex:1; min-width:0; cursor:pointer;">
+											<input type="checkbox" name="folderListingItems" value="#EncodeForHTMLAttribute(folderOption.path)#" data-folder-id="#Val(folderOption.id)#" <cfif isFolderSelected>checked</cfif> style="width:18px; height:18px; margin-top:0.15rem; flex-shrink:0; accent-color:var(--admin-primary);">
+											<span style="min-width:0; flex:1;">
+												<strong data-folder-title style="display:block; color:var(--admin-text-main); font-size:0.875rem;">#EncodeForHTML(folderOption.name)#</strong>
+												<span class="pg-help" style="margin:0; font-size:0.75rem; display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap;">
+													<code data-folder-relative style="font-size:0.72rem; color:var(--admin-primary); background:rgba(30,58,138,0.06); padding:0.1rem 0.3rem; border-radius:3px;">/#EncodeForHTML(folderRel)#</code>
+													<span>&bull;</span>
+													<span class="badge badge-neutral" data-folder-layout-badge style="font-size:0.68rem; padding:0.1rem 0.4rem;">#folderLay eq '3/9' ? '3/9 Grid' : 'Full Width'#</span>
+												</span>
+											</span>
+										</label>
+										<button type="button" class="btn btn-outline btn-sm btn-icon-only" data-edit-folder-item title="Edit" aria-label="Edit #EncodeForHTMLAttribute(folderOption.name)#">#svgIcon(name="edit", size=14)#</button>
+									</div>
+								</cfloop>
+							</div>
+							<template id="pgIconEdit">#svgIcon(name="edit", size=14)#</template><template id="pgIconTrash">#svgIcon(name="trash", size=14)#</template>
+							<div id="pgFolderListingStatus" role="status" aria-live="polite" class="pg-help"></div>
+							<button type="button" class="btn btn-outline btn-sm" id="pgAddFolderListingItem" style="margin-top:0.4rem;">#svgIcon(name="plus", size=14)# <span>Add Folder Explorer Item</span></button>
+						</div>
+					</div>
 				</div>
 			</div>
 		</div>
 	</div>
 
 	<!--- Sidebar column --->
-	<div style="display:flex; flex-direction:column; gap:1.25rem;">
-		<div class="admin-card" style="margin-bottom:0;">
-			<div class="card-header">
-				<h2 class="card-title">#svgIcon(name="published", size=16)# <span>Publish</span></h2>
-			</div>
-			<div class="card-body">
-				<div class="pg-field">
-					<label for="pgStatus" class="form-label">Status</label>
-					<select id="pgStatus" name="status" class="form-control" style="width:100%;">
-						<option value="Active" <cfif page.status eq "Active">selected</cfif>>Active</option>
-						<option value="Inactive" <cfif page.status eq "Inactive">selected</cfif>>Inactive</option>
-					</select>
-				</div>
-				<div class="pg-field">
-					<label for="pgVisibility" class="form-label">Visibility</label>
-					<select id="pgVisibility" name="visibility" class="form-control" style="width:100%;">
-						<cfloop list="Published,Draft,Scheduled,Hidden" index="v">
-							<option value="#v#" <cfif page.visibility eq v>selected</cfif>>#v#</option>
-						</cfloop>
-					</select>
-				</div>
-				<div class="pg-field" id="pgScheduleWrap" <cfif page.visibility neq "Scheduled">hidden</cfif>>
-					<label for="pgPublishAt" class="form-label">Publish On</label>
-					<input type="datetime-local" id="pgPublishAt" name="publishAt" class="form-control" style="width:100%;">
-				</div>
-				<dl id="pgMetaAuditDl" style="margin:0 0 1rem 0;<cfif isNew and not len(trim(page.updated ?: ''))> display:none;</cfif>">
-					<div class="pg-meta-row"><dt>Last updated</dt><dd id="pgLastUpdatedDd">#page.updated ?: ''#</dd></div>
-					<div class="pg-meta-row"><dt>Updated by</dt><dd id="pgAuthorDd">#EncodeForHTML(page.author ?: '')#</dd></div>
-				</dl>
-				<div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-					<button type="submit" class="btn btn-primary btn-sm" id="btnSavePage" style="flex:1;">
-						#svgIcon(name="save", size=14)#
-						<span>#isNew ? "Create Page" : "Save Changes"#</span>
-					</button>
-					<a href="#urlFor(controller='pages', action='index')#" class="btn btn-outline btn-sm">Cancel</a>
-				</div>
-			</div>
-		</div>
-
-		<div class="admin-card" style="margin-bottom:0;">
-			<div class="card-header">
-				<h2 class="card-title">#svgIcon(name="layers", size=16)# <span>Page Attributes</span></h2>
-			</div>
-			<div class="card-body">
-				<div class="pg-field">
-					<label for="pgParent" class="form-label">Page Assignment</label>
-					<cfset isAssignedToMenu = (page.parent eq "Assign to Main Menu Item" or page.parent eq "Assign to Menu Item" or (page.parent neq "" and page.parent neq "Top Level - Called from URL") or page.menuItem)>
-					<select id="pgParent" name="parent" class="form-control" style="width:100%;" aria-describedby="pgAssignmentHelp">
-						<option value="Top Level - Called from URL" <cfif not isAssignedToMenu>selected</cfif>>Top Level - Called from URL</option>
-						<option value="Assign to Main Menu Item" <cfif isAssignedToMenu>selected</cfif>>Assign to Main Menu Item</option>
-					</select>
-					<div id="pgAssignmentHelp" class="pg-help">Specify whether this page is a top-level URL route or assigned to a menu item.</div>
-				</div>
-
-				<!--- Secondary Menu Item selection: ONLY open when Assign to Main Menu Item is selected --->
-				<div id="pgMenuAssignmentWrap" class="pg-field" style="margin-top:0.75rem;<cfif not isAssignedToMenu> display:none;</cfif>" <cfif not isAssignedToMenu>hidden</cfif>>
-					<label for="pgMenuItemSelect" class="form-label" style="font-size:0.8rem; font-weight:600;">Menu Item Selection</label>
-					<select id="pgMenuItemSelect" name="menuItemTarget" class="form-control" style="width:100%;" data-initial-selected="#EncodeForHTMLAttribute(page.parent)#" data-page-workspace="#EncodeForHTMLAttribute(page.siteId)#">
-						<cfif ArrayLen(menuItemOptions) eq 0>
-							<option value="">(No menu items defined for this workspace)</option>
-						<cfelse>
-							<option value="" <cfif not len(trim(page.parent))>selected</cfif>>-- Select Menu Item --</option>
-							<cfset currentGroup = "">
-							<cfloop array="#menuItemOptions#" index="menuOpt">
-								<cfif structKeyExists(menuOpt, "group") and len(menuOpt.group) and menuOpt.group neq currentGroup>
-									<cfif len(currentGroup)></optgroup></cfif>
-									<cfset currentGroup = menuOpt.group>
-									<optgroup label="#EncodeForHTMLAttribute(currentGroup)#">
-								<cfelseif (!structKeyExists(menuOpt, "group") or !len(menuOpt.group)) and len(currentGroup)>
-									</optgroup>
-									<cfset currentGroup = "">
-								</cfif>
-								<option value="#EncodeForHTMLAttribute(menuOpt.label)#" <cfif page.parent eq menuOpt.label>selected</cfif>>#RepeatString("&nbsp;&nbsp;&nbsp;&nbsp;", Int(Val(menuOpt.depth)))##EncodeForHTML(menuOpt.label)#</option>
-							</cfloop>
-							<cfif len(currentGroup)></optgroup></cfif>
-						</cfif>
-					</select>
-					<div id="pgMenuAssignmentHelp" class="pg-help"><cfif ArrayLen(menuItemOptions) eq 0>No menu structure defined yet for this workspace.<cfelse>Select the navigation item or parent page this belongs under.</cfif></div>
-				</div>
-				<div class="pg-field">
-					<label style="display:flex; align-items:center; gap:0.55rem; font-size:0.85rem; cursor:pointer;">
-						<input type="checkbox" id="pgFolderListingEnabled" name="folderListingEnabled" <cfif folderAttachedHere or (structKeyExists(page, "hasArchive") and page.hasArchive)>checked</cfif> style="width:18px; height:18px; accent-color:var(--admin-primary);" aria-controls="pgFolderListingControls">
-						<strong>Add Folder Explorer</strong>
-					</label>
-					<div class="pg-help">Show a folder explorer on this page.</div>
-				</div>
-				<div id="pgFolderListingControls" data-content-id="#page.id#" data-save-url="#urlFor(route="saveFolderExplorer")#" data-delete-url="#urlFor(route="deleteFolderExplorer")#" <cfif !folderAttachedHere>hidden</cfif>>
-					<div id="pgFolderListingItems" style="display:flex; flex-direction:column; gap:0;" aria-live="polite">
-						<cfloop array="#availableFolders#" index="folderOption">
-							<cfset folderAbs = folderOption.absolutePath>
-							<cfset folderRel = folderOption.relativePath>
-							<cfset folderLay = folderOption.layout>
-							<div class="pg-subpage-row" data-id="#folderOption.id#" data-title="#EncodeForHTMLAttribute(folderOption.name)#" data-path="#EncodeForHTMLAttribute(folderOption.path)#" data-absolute-path="#EncodeForHTMLAttribute(folderAbs)#" data-relative-path="#EncodeForHTMLAttribute(folderRel)#" data-layout="#EncodeForHTMLAttribute(folderLay)#" style="padding:0.45rem 0; gap:0.5rem; border-bottom:1px dashed var(--admin-border-subtle); display:flex; align-items:center;">
-								<label style="display:flex; align-items:flex-start; gap:0.5rem; flex:1; min-width:0; cursor:pointer;">
-									<input type="checkbox" name="folderListingItems" value="#EncodeForHTMLAttribute(folderOption.path)#" style="width:18px; height:18px; margin-top:0.15rem; flex-shrink:0; accent-color:var(--admin-primary);">
-									<span style="min-width:0; flex:1;">
-										<strong data-folder-title style="display:block; color:var(--admin-text-main); font-size:0.875rem;">#EncodeForHTML(folderOption.name)#</strong>
-										<span class="pg-help" style="margin:0; font-size:0.75rem; display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap;">
-											<code data-folder-relative style="font-size:0.72rem; color:var(--admin-primary); background:rgba(30,58,138,0.06); padding:0.1rem 0.3rem; border-radius:3px;">/#EncodeForHTML(folderRel)#</code>
-											<span>&bull;</span>
-											<span class="badge badge-neutral" data-folder-layout-badge style="font-size:0.68rem; padding:0.1rem 0.4rem;">#folderLay eq '3/9' ? '3/9 Grid' : 'Full Width'#</span>
-										</span>
-									</span>
-								</label>
-								<button type="button" class="btn btn-outline btn-sm btn-icon-only" data-edit-folder-item title="Edit" aria-label="Edit #EncodeForHTMLAttribute(folderOption.name)#">#svgIcon(name="edit", size=14)#</button>
-							</div>
-						</cfloop>
-					</div>
-					<template id="pgIconEdit">#svgIcon(name="edit", size=14)#</template><template id="pgIconTrash">#svgIcon(name="trash", size=14)#</template>
-					<div id="pgFolderListingStatus" role="status" aria-live="polite" class="pg-help"></div>
-					<button type="button" class="btn btn-outline btn-sm" id="pgAddFolderListingItem" style="margin-top:0.4rem;">#svgIcon(name="plus", size=14)# <span>Add Folder Explorer Item</span></button>
-				</div>
-				<div class="pg-field" style="margin-top:15px;">
-					<label style="display:flex; align-items:center; gap:0.55rem; font-size:0.85rem; cursor:pointer;">
-						<input type="checkbox" id="pgMenuItem" name="menuItem" <cfif page.menuItem>checked</cfif> style="width:18px; height:18px; accent-color:var(--admin-primary);" aria-describedby="pgMenuHelp">
-						<strong>Show in main menu</strong>
-					</label>
-					<div id="pgMenuHelp" class="pg-help">Adds this page to the site's top navigation.</div>
-				</div>
-			</div>
-		</div>
+	<div class="pg-side-col">
 		<div class="admin-card" id="pgLayoutPanel" style="margin-bottom:0;">
 			<div class="card-header">
 				<h2 class="card-title">#svgIcon(name="layers", size=16)# <span>Page Layout</span></h2>
@@ -326,6 +318,44 @@
 							<div class="pg-help">Save this page first to create new custom subpages. Existing workspace subpages can be selected above.</div>
 						</div>
 					</cfif>
+				</div>
+			</div>
+		</div>
+
+		<div class="admin-card pg-publish-sticky" id="pgPublishPanel" style="margin-bottom:0;">
+			<div class="card-header">
+				<h2 class="card-title">#svgIcon(name="published", size=16)# <span>Publish</span></h2>
+			</div>
+			<div class="card-body">
+				<div class="pg-field">
+					<label for="pgStatus" class="form-label">Status</label>
+					<select id="pgStatus" name="status" class="form-control" style="width:100%;">
+						<option value="Active" <cfif page.status eq "Active">selected</cfif>>Active</option>
+						<option value="Inactive" <cfif page.status eq "Inactive">selected</cfif>>Inactive</option>
+					</select>
+				</div>
+				<div class="pg-field">
+					<label for="pgVisibility" class="form-label">Visibility</label>
+					<select id="pgVisibility" name="visibility" class="form-control" style="width:100%;">
+						<cfloop list="Published,Draft,Scheduled,Hidden" index="v">
+							<option value="#v#" <cfif page.visibility eq v>selected</cfif>>#v#</option>
+						</cfloop>
+					</select>
+				</div>
+				<div class="pg-field" id="pgScheduleWrap" <cfif page.visibility neq "Scheduled">hidden</cfif>>
+					<label for="pgPublishAt" class="form-label">Publish On</label>
+					<input type="datetime-local" id="pgPublishAt" name="publishAt" class="form-control" style="width:100%;">
+				</div>
+				<dl id="pgMetaAuditDl" style="margin:0 0 1rem 0;<cfif isNew and not len(trim(page.updated ?: ''))> display:none;</cfif>">
+					<div class="pg-meta-row"><dt>Last updated</dt><dd id="pgLastUpdatedDd">#page.updated ?: ''#</dd></div>
+					<div class="pg-meta-row"><dt>Updated by</dt><dd id="pgAuthorDd">#EncodeForHTML(page.author ?: '')#</dd></div>
+				</dl>
+				<div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+					<button type="submit" class="btn btn-primary btn-sm" id="btnSavePage" style="flex:1;">
+						#svgIcon(name="save", size=14)#
+						<span>#isNew ? "Create Page" : "Save Changes"#</span>
+					</button>
+					<a href="#urlFor(controller='pages', action='index')#" class="btn btn-outline btn-sm">Cancel</a>
 				</div>
 			</div>
 		</div>
@@ -768,6 +798,26 @@
 	folderListingEnabled.addEventListener("change", function () {
 		folderListingControls.hidden = !folderListingEnabled.checked;
 	});
+	document.querySelectorAll("[data-attr-tab]").forEach(function (tabBtn) {
+		tabBtn.addEventListener("click", function () {
+			var mode = tabBtn.getAttribute("data-attr-tab");
+			var isNav = (mode === "nav");
+			var btnNav = document.getElementById("tabBtnAttrNav");
+			var btnFolder = document.getElementById("tabBtnAttrFolder");
+			var panelNav = document.getElementById("tabPanelAttrNav");
+			var panelFolder = document.getElementById("tabPanelAttrFolder");
+			if (btnNav) {
+				btnNav.classList.toggle("is-active", isNav);
+				btnNav.setAttribute("aria-selected", isNav ? "true" : "false");
+			}
+			if (btnFolder) {
+				btnFolder.classList.toggle("is-active", !isNav);
+				btnFolder.setAttribute("aria-selected", !isNav ? "true" : "false");
+			}
+			if (panelNav) panelNav.hidden = !isNav;
+			if (panelFolder) panelFolder.hidden = isNav;
+		});
+	});
 	var folderContentId = parseInt(folderListingControls.dataset.contentId, 10) || 0;
 
 	function folderField(obj, name) {
@@ -803,7 +853,6 @@
 
 	var pgParent = document.getElementById("pgParent");
 	var pgMenuAssignmentWrap = document.getElementById("pgMenuAssignmentWrap");
-	var pgMenuItem = document.getElementById("pgMenuItem");
 
 	function updateMenuAssignmentVisibility() {
 		if (!pgParent || !pgMenuAssignmentWrap) return;
@@ -811,9 +860,6 @@
 		var isMenu = (val === "Assign to Main Menu Item" || val === "Assign to Menu Item");
 		pgMenuAssignmentWrap.style.display = isMenu ? "block" : "none";
 		pgMenuAssignmentWrap.hidden = !isMenu;
-		if (pgMenuItem) {
-			pgMenuItem.checked = isMenu;
-		}
 		if (isMenu && typeof window.cmsadminLoadMenuItems === "function") {
 			var menuSel = document.getElementById("pgMenuItemSelect");
 			if (menuSel && menuSel.options.length <= 1) {
@@ -832,14 +878,6 @@
 	if (pgParent) {
 		pgParent.addEventListener("change", updateMenuAssignmentVisibility);
 		updateMenuAssignmentVisibility(); // Run on load to guarantee initial state
-	}
-	if (pgMenuItem) {
-		pgMenuItem.addEventListener("change", function () {
-			if (pgParent) {
-				pgParent.value = this.checked ? "Assign to Main Menu Item" : "Top Level - Called from URL";
-				updateMenuAssignmentVisibility();
-			}
-		});
 	}
 
 	function openFolderItemModal(row) {
@@ -1011,6 +1049,7 @@
 		var cb = row.querySelector('input[name="folderListingItems"]');
 		if (cb) {
 			cb.value = "/" + relPath;
+			cb.dataset.folderId = result.item.id;
 			cb.checked = true;
 		}
 		var titleEl = row.querySelector("[data-folder-title]");
@@ -1338,6 +1377,10 @@
 		status.textContent = "Saving page attributes to database...";
 
 		var sidebarChecked = Array.from(document.querySelectorAll('input[name="sidebarIds"]:checked')).map(function(el) { return el.value; });
+		var folderCheckedIds = Array.from(document.querySelectorAll('input[name="folderListingItems"]:checked')).map(function(el) {
+			var r = el.closest(".pg-subpage-row");
+			return parseInt(el.dataset.folderId || (r && r.dataset.id) || 0, 10) || 0;
+		}).filter(function(id) { return id > 0; });
 		var publishAtEl = document.getElementById("pgPublishAt");
 		var parentAssignmentEl = document.getElementById("pgParent");
 		var parentVal = parentAssignmentEl ? parentAssignmentEl.value : "Top Level - Called from URL";
@@ -1403,6 +1446,7 @@
 			menuItemTarget: menuItemTargetVal,
 			menuItem: document.getElementById("pgMenuItem") ? document.getElementById("pgMenuItem").checked : false,
 			folderListingEnabled: folderListingEnabled ? folderListingEnabled.checked : false,
+			folderListingIds: folderCheckedIds,
 			sidebarIds: sidebarChecked
 		};
 
@@ -1599,33 +1643,101 @@
 		});
 	}
 
-	// Media Library Picker & Form Embed Integration
-	var btnImg = document.getElementById("btnEditorInsertImage");
-	var btnDoc = document.getElementById("btnEditorInsertDoc");
-	var btnBlock = document.getElementById("btnEditorInsertBlock");
+	// Form Embed Integration
 	var btnForm = document.getElementById("btnEditorInsertForm");
-	if (btnImg) {
-		btnImg.addEventListener("click", function() { openMediaPicker("image"); });
-	}
-	if (btnDoc) {
-		btnDoc.addEventListener("click", function() { openMediaPicker("document"); });
-	}
-	if (btnBlock) {
-		btnBlock.addEventListener("click", function() {
-			var ed = (typeof JBDEditor !== "undefined") ? JBDEditor.get("#pgContent") : null;
-			if (ed && typeof ed.openTemplateModal === "function") {
-				ed.openTemplateModal();
-			} else {
-				var templateBtn = document.querySelector('[data-action="template"], button[title*="Template"]');
-				if (templateBtn) templateBtn.click();
-			}
-		});
-	}
 	if (btnForm) {
 		btnForm.addEventListener("click", function() {
 			openEmbedFormModal();
 		});
 	}
+
+	// Search & Sharing Auto-Generation from Page Content
+	var metaTitleInput = document.getElementById("pgMetaTitle");
+	var metaDescInput = document.getElementById("pgMetaDesc");
+	var metaTitleCount = document.getElementById("pgMetaTitleCount");
+	var metaDescCount = document.getElementById("pgMetaDescCount");
+	var btnAutoGenerateMeta = document.getElementById("btnAutoGenerateMeta");
+
+	function updateMetaCounters() {
+		if (metaTitleInput && metaTitleCount) {
+			var tLen = metaTitleInput.value.length;
+			metaTitleCount.textContent = tLen + " / 65";
+			metaTitleCount.style.color = (tLen > 65) ? "var(--admin-danger)" : "var(--admin-text-muted)";
+		}
+		if (metaDescInput && metaDescCount) {
+			var dLen = metaDescInput.value.length;
+			metaDescCount.textContent = dLen + " / 160";
+			metaDescCount.style.color = (dLen > 160) ? "var(--admin-danger)" : "var(--admin-text-muted)";
+		}
+	}
+
+	function generateSearchAndSharing(notifyUser) {
+		var titleEl = document.getElementById("pgTitle");
+		var pageTitle = titleEl ? titleEl.value.trim() : "";
+
+		// Extract plain text from JBDEditor or raw textarea
+		var plainContent = "";
+		var ed = (typeof JBDEditor !== "undefined") ? JBDEditor.get("#pgContent") : null;
+		if (ed && typeof ed.getText === "function") {
+			plainContent = ed.getText();
+		} else {
+			var rawVal = document.getElementById("pgContent") ? document.getElementById("pgContent").value : "";
+			var tmp = document.createElement("div");
+			tmp.innerHTML = rawVal;
+			plainContent = tmp.textContent || tmp.innerText || "";
+		}
+
+		// Clean up content string (strip repetitive title heading, excess whitespace)
+		plainContent = plainContent.replace(/\r\n|\r|\n/g, " ").replace(/\s+/g, " ").trim();
+		if (pageTitle && plainContent.toLowerCase().indexOf(pageTitle.toLowerCase()) === 0) {
+			plainContent = plainContent.substring(pageTitle.length).replace(/^[\s:\-–—]+/, "").trim();
+		}
+
+		// 1. Generate Browser / Search Title (max 65 chars)
+		if (metaTitleInput && pageTitle) {
+			var suffix = " | Chelan County";
+			if (pageTitle.toLowerCase().indexOf("chelan county") !== -1) {
+				metaTitleInput.value = pageTitle.substring(0, 65);
+			} else if ((pageTitle + suffix).length <= 65) {
+				metaTitleInput.value = pageTitle + suffix;
+			} else {
+				metaTitleInput.value = pageTitle.substring(0, 62).trim() + "...";
+			}
+		}
+
+		// 2. Generate Meta Description (clean word boundary <= 160 chars)
+		if (metaDescInput && plainContent) {
+			var maxChars = 155;
+			if (plainContent.length <= maxChars) {
+				metaDescInput.value = plainContent;
+			} else {
+				var snippet = plainContent.substring(0, maxChars);
+				var lastBoundary = snippet.lastIndexOf(" ");
+				if (lastBoundary > 60) {
+					snippet = snippet.substring(0, lastBoundary);
+				}
+				metaDescInput.value = snippet.replace(/[\s,;:\-–—.]+$/, "") + "...";
+			}
+		}
+
+		updateMetaCounters();
+
+		if (notifyUser && typeof window.showToast === "function") {
+			window.showToast("Search & Sharing metadata generated from content.", "success");
+		}
+	}
+
+	if (metaTitleInput) metaTitleInput.addEventListener("input", updateMetaCounters);
+	if (metaDescInput) metaDescInput.addEventListener("input", updateMetaCounters);
+	if (btnAutoGenerateMeta) {
+		btnAutoGenerateMeta.addEventListener("click", function (e) {
+			e.preventDefault();
+			generateSearchAndSharing(true);
+		});
+	}
+
+	// Initialize live counters on page load
+	updateMetaCounters();
 })();
 
 function getActiveWorkspaceId() {
@@ -1851,7 +1963,8 @@ window.closeEmbedFormModal = function() {
 	});
 })();
 
-window.openMediaPicker = function(mode) {
+window.openMediaPicker = function(mode, options) {
+	options = options || {};
 	var modal = document.getElementById("mediaPickerModal");
 	var backdrop = document.getElementById("mediaPickerModalBackdrop");
 	var iframe = document.getElementById("mediaPickerIframe");
@@ -1865,8 +1978,25 @@ window.openMediaPicker = function(mode) {
 	}
 	var activeWs = getActiveWorkspaceId() || "<cfoutput>#EncodeForJavaScript(editSiteId ?: (page.siteId ?: ''))#</cfoutput>";
 	var pickerType = (mode === 'document') ? 'document' : 'image';
+	var folder = options.folder || (mode === 'document' ? 'documents' : 'all');
+
+	if (typeof options.onSelect === 'function') {
+		window._mediaPickerCustomCallback = options.onSelect;
+	} else {
+		window._mediaPickerCustomCallback = null;
+	}
+
+	// Elevate z-index if opened over an active editor modal dialog
+	var hasDialogOverlay = !!document.querySelector('.jbd-dialog-overlay');
+	if (modal) {
+		modal.style.zIndex = hasDialogOverlay ? '100005' : '99999';
+	}
+	if (backdrop) {
+		backdrop.style.zIndex = hasDialogOverlay ? '100004' : '99998';
+	}
+
 	if (iframe) {
-		iframe.src = '/media/picker?picker=' + encodeURIComponent(mode) + '&type=' + encodeURIComponent(pickerType) + '&ws=' + encodeURIComponent(activeWs) + '&callback=onMediaSelectedFromPicker';
+		iframe.src = '/media/picker?picker=' + encodeURIComponent(mode) + '&type=' + encodeURIComponent(pickerType) + '&folder=' + encodeURIComponent(folder) + '&ws=' + encodeURIComponent(activeWs) + '&callback=onMediaSelectedFromPicker';
 	}
 	if (modal) {
 		modal.style.display = 'flex';
@@ -1887,27 +2017,42 @@ window.closeMediaPickerModal = function() {
 	if (modal) {
 		modal.style.display = 'none';
 		modal.classList.remove('open');
+		modal.style.zIndex = '99999';
 	}
 	if (backdrop) {
 		backdrop.style.display = 'none';
 		backdrop.style.opacity = '0';
 		backdrop.style.visibility = 'hidden';
 		backdrop.classList.remove('open');
+		backdrop.style.zIndex = '99998';
 	}
+	window._mediaPickerCustomCallback = null;
 	document.body.style.overflow = '';
 };
 
 window.onMediaSelectedFromPicker = function(payload) {
+	var customCb = window._mediaPickerCustomCallback;
 	closeMediaPickerModal();
+	if (typeof customCb === 'function') {
+		customCb(payload);
+		return;
+	}
 	if (payload && payload.html) {
 		insertSnippetAtCursor("pgContent", payload.html);
 	}
 };
 
 window.addEventListener('message', function(e) {
-	if (e.data && e.data.type === 'CMS_MEDIA_SELECTED' && e.data.html) {
+	if (e.data && e.data.type === 'CMS_MEDIA_SELECTED') {
+		var customCb = window._mediaPickerCustomCallback;
 		closeMediaPickerModal();
-		insertSnippetAtCursor("pgContent", e.data.html);
+		if (typeof customCb === 'function') {
+			customCb(e.data);
+			return;
+		}
+		if (e.data.html) {
+			insertSnippetAtCursor("pgContent", e.data.html);
+		}
 	}
 });
 
@@ -1934,7 +2079,7 @@ if (typeof window.finishTopProgress === "function") window.finishTopProgress();
 
 <!--- Media Picker Modal Overlay for Page Editor --->
 <div class="admin-modal-backdrop" id="mediaPickerModalBackdrop" style="display:none; position:fixed; inset:0; z-index:99998; background:rgba(15,23,42,0.72) !important; backdrop-filter:blur(6px) !important; -webkit-backdrop-filter:blur(6px) !important; opacity:0; visibility:hidden; transition:opacity 0.2s ease, visibility 0.2s ease;" onclick="closeMediaPickerModal()"></div>
-<div class="admin-modal" id="mediaPickerModal" role="dialog" aria-modal="true" aria-labelledby="mediaPickerModalTitle" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:99999; width:94%; max-width:960px; height:85vh; background:var(--admin-surface); border-radius:var(--radius-lg); box-shadow:0 25px 65px rgba(15,23,42,0.35); border:1px solid var(--admin-border); overflow:hidden; flex-direction:column;">
+<div class="admin-modal" id="mediaPickerModal" role="dialog" aria-modal="true" aria-labelledby="mediaPickerModalTitle" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:99999; width:96vw; max-width:1440px; height:88vh; background:var(--admin-surface); border-radius:var(--radius-lg); box-shadow:0 25px 65px rgba(15,23,42,0.35); border:1px solid var(--admin-border); overflow:hidden; flex-direction:column;">
 	<div class="modal-header" style="padding:1rem 1.25rem; border-bottom:1px solid var(--admin-border); display:flex; justify-content:space-between; align-items:center; background:#f8fafc;">
 		<h2 class="modal-title" id="mediaPickerModalTitle" style="margin:0; font-size:1.05rem; font-weight:700; display:flex; align-items:center; gap:0.5rem;">
 			<cfoutput>#svgIcon(name="media", size=18)#</cfoutput>

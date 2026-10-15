@@ -67,7 +67,7 @@ component extends="Controller" {
 		variables.editSiteId = local.editSiteId;
 		variables.availableSubpages = loadSubpages(contentId=variables.page.id, requestedWs=local.editSiteId, assignedIds=variables.page.sidebarIds);
 		variables.availableSidebars = [];
-		variables.availableFolders = loadFolderExplorers(variables.page.id);
+		variables.availableFolders = loadFolderExplorers(contentId=variables.page.id, requestedWs=local.editSiteId);
 		variables.menuItemOptions = loadMenuItemOptions(requestedWs=local.editSiteId, currentSelected=variables.page.parent);
 		variables.availableForms = loadWorkspaceForms(requestedWs=local.editSiteId);
 	}
@@ -285,21 +285,16 @@ component extends="Controller" {
 		local.actor = spCurrentActor();
 		local.isPub = (local.visibility == "Published") ? 1 : 0;
 
-		// Calculate PageType and MenuSelected based on Page Assignment
+		// Calculate PageType and MenuSelected based on Page Assignment (independent of ShowInMenu)
 		if (local.pageAssignment == "Assign to Main Menu Item" || local.pageAssignment == "Assign to Menu Item") {
 			local.pageType = 1;
 			local.menuSelected = local.menuItemTarget;
-		} else if (local.pageAssignment == "Top Level - Called from URL") {
+		} else if (local.pageAssignment == "Top Level - Called from URL" || !Len(local.pageAssignment)) {
 			local.pageType = 0;
 			local.menuSelected = "";
 		} else {
-			if (Len(local.pageAssignment) && local.pageAssignment != "Top Level - Called from URL") {
-				local.pageType = 1;
-				local.menuSelected = local.pageAssignment;
-			} else {
-				local.pageType = local.menuItem ? 1 : 0;
-				local.menuSelected = local.menuItemTarget;
-			}
+			local.pageType = 1;
+			local.menuSelected = local.pageAssignment;
 		}
 
 		try {
@@ -412,6 +407,36 @@ component extends="Controller" {
 				actor: { value: local.actor, cfsqltype: "cf_sql_nvarchar" },
 				id: { value: local.id, cfsqltype: "cf_sql_integer" }
 			}, { datasource: "ChelanCountyWebsite" });
+
+			// Sync checked Folder Explorer items for this page
+			if (StructKeyExists(local.req, "folderListingIds")) {
+				local.rawFolderIds = IsArray(local.req.folderListingIds) ? local.req.folderListingIds : ListToArray(ToString(local.req.folderListingIds));
+				local.checkedFolderIds = [];
+				for (local.fIdItem in local.rawFolderIds) {
+					local.cleanFid = Val(local.fIdItem);
+					if (local.cleanFid > 0 && !ArrayFind(local.checkedFolderIds, local.cleanFid)) {
+						ArrayAppend(local.checkedFolderIds, local.cleanFid);
+					}
+				}
+				if (!local.folderListingEnabled || ArrayLen(local.checkedFolderIds) == 0) {
+					queryExecute("
+						UPDATE page_FolderExplorer SET ContentID = 0 WHERE ContentID = :pageId
+					", { pageId: { value: local.id, cfsqltype: "cf_sql_integer" } }, { datasource: "ChelanCountyWebsite" });
+				} else {
+					local.fPlaceholders = [];
+					local.fParams = { pageId: { value: local.id, cfsqltype: "cf_sql_integer" } };
+					for (local.fIdx = 1; local.fIdx <= ArrayLen(local.checkedFolderIds); local.fIdx++) {
+						local.fpName = "fId" & local.fIdx;
+						ArrayAppend(local.fPlaceholders, ":" & local.fpName);
+						local.fParams[local.fpName] = { value: local.checkedFolderIds[local.fIdx], cfsqltype: "cf_sql_integer" };
+					}
+					local.fInClause = ArrayToList(local.fPlaceholders, ", ");
+					queryExecute("
+						UPDATE page_FolderExplorer SET ContentID = 0 WHERE ContentID = :pageId AND ID NOT IN (" & local.fInClause & ");
+						UPDATE page_FolderExplorer SET ContentID = :pageId WHERE ID IN (" & local.fInClause & ");
+					", local.fParams, { datasource: "ChelanCountyWebsite" });
+				}
+			}
 
 			local.updatedStr = DateFormat(Now(), "mm/dd/yyyy") & " " & TimeFormat(Now(), "hh:mm:ss");
 			fxRenderJson({
@@ -593,36 +618,53 @@ component extends="Controller" {
 	}
 
 	/**
-	 * Folder Explorer items saved for a page (page_FolderExplorer.ContentID = page id).
+	 * Folder Explorer items saved for the workspace / page (page_FolderExplorer.ContentID = page id when attached).
 	 */
-	private array function loadFolderExplorers(required numeric contentId) {
+	private array function loadFolderExplorers(required numeric contentId, string requestedWs = "") {
 		local.items = [];
-		if (arguments.contentId <= 0) return local.items;
-		local.siteId = activeWorkspaceId();
-		if (!Len(local.siteId) || local.siteId == "global" || local.siteId == "all") return local.items;
-
-		local.candidateSiteIds = getCandidateSiteIds(local.siteId);
-		if (ArrayLen(local.candidateSiteIds) == 0) ArrayAppend(local.candidateSiteIds, local.siteId);
-		local.inPlaceholders = [];
-		local.params = { contentId: { value: arguments.contentId, cfsqltype: "cf_sql_integer" } };
-		for (local.idx = 1; local.idx <= ArrayLen(local.candidateSiteIds); local.idx++) {
-			local.pName = "feSite" & local.idx;
-			ArrayAppend(local.inPlaceholders, ":" & local.pName);
-			local.params[local.pName] = { value: local.candidateSiteIds[local.idx], cfsqltype: "cf_sql_nvarchar" };
+		local.siteId = Len(Trim(arguments.requestedWs)) ? Trim(arguments.requestedWs) : activeWorkspaceId();
+		if ((!Len(local.siteId) || local.siteId == "global" || local.siteId == "all") && StructKeyExists(variables, "page") && StructKeyExists(variables.page, "siteId") && Len(Trim(variables.page.siteId))) {
+			local.siteId = Trim(variables.page.siteId);
 		}
-		local.inClause = ArrayToList(local.inPlaceholders, ", ");
+		if ((!Len(local.siteId) || local.siteId == "global" || local.siteId == "all") && arguments.contentId <= 0) {
+			return local.items;
+		}
+
+		local.candidateSiteIds = (Len(local.siteId) && local.siteId != "global" && local.siteId != "all") ? getCandidateSiteIds(local.siteId) : [];
+		if (Len(local.siteId) && local.siteId != "global" && local.siteId != "all" && ArrayLen(local.candidateSiteIds) == 0) {
+			ArrayAppend(local.candidateSiteIds, local.siteId);
+		}
+
+		local.whereClauses = [];
+		local.params = {};
+		if (ArrayLen(local.candidateSiteIds) > 0) {
+			local.inPlaceholders = [];
+			for (local.idx = 1; local.idx <= ArrayLen(local.candidateSiteIds); local.idx++) {
+				local.pName = "feSite" & local.idx;
+				ArrayAppend(local.inPlaceholders, ":" & local.pName);
+				local.params[local.pName] = { value: local.candidateSiteIds[local.idx], cfsqltype: "cf_sql_nvarchar" };
+			}
+			local.inClause = ArrayToList(local.inPlaceholders, ", ");
+			ArrayAppend(local.whereClauses, "SiteID IN (" & local.inClause & ")");
+		}
+		if (arguments.contentId > 0) {
+			local.params.contentId = { value: arguments.contentId, cfsqltype: "cf_sql_integer" };
+			ArrayAppend(local.whereClauses, "ContentID = :contentId");
+		}
+		if (ArrayLen(local.whereClauses) == 0) return local.items;
 
 		try {
 			local.rows = queryExecute("
 				SELECT ID, ContentID, Title, RelativePath, AbsolutePath, Absolute, Weight, Layout, Placement
 				FROM page_FolderExplorer
-				WHERE ContentID = :contentId AND SiteID IN (" & local.inClause & ")
+				WHERE (" & ArrayToList(local.whereClauses, " OR ") & ")
 				ORDER BY Weight, ID
 			", local.params, { datasource: "ChelanCountyWebsite" });
 			for (local.row in local.rows) {
 				ArrayAppend(local.items, {
 					id: local.row.ID,
-					contentId: local.row.ContentID,
+					contentId: Val(local.row.ContentID),
+					selected: (arguments.contentId > 0 && Val(local.row.ContentID) == Val(arguments.contentId)),
 					name: local.row.Title,
 					path: Len(local.row.AbsolutePath) ? local.row.AbsolutePath : local.row.RelativePath,
 					absolutePath: local.row.AbsolutePath,
@@ -1222,7 +1264,7 @@ component extends="Controller" {
 					status: local.row.StatusCode ?: "Active",
 					visibility: local.row.Visibility ?: "Published",
 					isPublished: (local.row.isPublished == 1),
-					menuItem: (local.row.ShowInMenu == 1 || local.row.PageType == 1),
+					menuItem: (local.row.ShowInMenu == 1),
 					locked: (local.row.isLocked == 1),
 					summary: local.row.Summary ?: "",
 					body: local.row.Body ?: "",
@@ -1286,7 +1328,8 @@ component extends="Controller" {
 					title: local.row.Title ?: "",
 					slug: local.row.Permalink ?: "",
 					siteId: local.row.SiteID ?: "",
-					menuItem: (local.row.ShowInMenu == 1 || local.row.PageType == 1),
+					pageType: Val(local.row.PageType ?: 0),
+					menuItem: (local.row.ShowInMenu == 1),
 					status: local.row.StatusCode ?: "Active",
 					visibility: local.row.Visibility ?: "Published",
 					parent: local.row.MenuSelected ?: "",
@@ -1301,6 +1344,810 @@ component extends="Controller" {
 			writeLog(type="error", file="pages", text="loadPagesList failed: #e.message# #e.detail#");
 		}
 		return local.pages;
+	}
+
+	/**
+	 * How Do I Directory & Mega-Menu Manager under Pages
+	 */
+	function howDoI() {
+		variables.pageTitle = "How Do I";
+		ensureHowDoITables();
+
+		local.role = getCurrentActiveRole();
+		variables.isAdmin = (local.role == "admin");
+
+		local.reqWs = (StructKeyExists(params, "ws") && Len(Trim(params.ws))) ? Trim(params.ws)
+			: ((StructKeyExists(cookie, "cmsadmin_workspace") && Len(Trim(cookie.cmsadmin_workspace))) ? Trim(cookie.cmsadmin_workspace) : "");
+		variables.activeWorkspace = resolveUserActiveWorkspace(local.reqWs, local.role);
+
+		local.wsId = LCase(Trim(variables.activeWorkspace.id ?: "global"));
+		local.isGlobalWs = (local.wsId == "global" || local.wsId == "all" || !Len(local.wsId));
+
+		// Scope: 'workspace' (default when a department is active) or 'all' (county-wide rollup, available to Admin or when Global is selected)
+		local.requestedScope = StructKeyExists(params, "scope") ? LCase(Trim(params.scope)) : "";
+		if (variables.isAdmin && (local.requestedScope == "all" || local.isGlobalWs)) {
+			variables.viewScope = "all";
+		} else {
+			variables.viewScope = "workspace";
+		}
+
+		variables.categories = loadHowDoICategories(includeInactive = true);
+		variables.howDoIItems = loadHowDoIItems(
+			requestedWs = (variables.viewScope == "all" ? "all" : local.wsId),
+			includeAllWorkspaces = (variables.viewScope == "all")
+		);
+		variables.countyRollupItems = loadHowDoIItems(
+			requestedWs = "all",
+			includeAllWorkspaces = true
+		);
+		variables.workspacePages = loadPagesList();
+		variables.workspaceForms = loadWorkspaceForms(requestedWs = local.wsId);
+		variables.accessibleWorkspaces = getUserAccessibleWorkspaces(local.role);
+	}
+
+	private boolean function fxToBoolean(any val, boolean defaultValue = false) {
+		if (IsNull(arguments.val) || !IsSimpleValue(arguments.val)) return arguments.defaultValue;
+		local.s = LCase(Trim(ToString(arguments.val)));
+		if (ListFindNoCase("1,true,yes,on", local.s)) return true;
+		if (ListFindNoCase("0,false,no,off", local.s)) return false;
+		return arguments.defaultValue;
+	}
+
+	/**
+	 * POST JSON: Create or update a "How Do I" link item
+	 */
+	function saveHowDoIItem() {
+		ensureHowDoITables();
+		local.body = fxReadJsonBody();
+		local.req = IsStruct(local.body) ? local.body : params;
+
+		local.id = Val(local.req.id ?: 0);
+		local.categoryId = Val(local.req.categoryId ?: 0);
+		local.question = Left(Trim(local.req.question ?: ""), 255);
+		local.destinationType = LCase(Trim(local.req.destinationType ?: "page"));
+		if (!ListFindNoCase("page,form,custom,external", local.destinationType)) {
+			local.destinationType = "custom";
+		}
+		local.pageId = Val(local.req.pageId ?: 0);
+		local.formId = Val(local.req.formId ?: 0);
+		local.destinationUrl = Left(Trim(local.req.destinationUrl ?: ""), 1000);
+		local.openInNewTab = StructKeyExists(local.req, "openInNewTab") ? fxToBoolean(local.req.openInNewTab, false) : false;
+		local.isFeaturedMegaMenu = StructKeyExists(local.req, "isFeaturedMegaMenu") ? fxToBoolean(local.req.isFeaturedMegaMenu, true) : true;
+		local.isPublished = StructKeyExists(local.req, "isPublished") ? fxToBoolean(local.req.isPublished, true) : true;
+		local.sortOrder = Int(Val(local.req.sortOrder ?: 0));
+
+		local.siteId = LCase(Trim(local.req.siteId ?: ""));
+		if (!Len(local.siteId) || local.siteId == "all" || local.siteId == "global") {
+			local.siteId = activeWorkspaceId();
+		}
+		if (!Len(local.siteId) || local.siteId == "all") {
+			local.siteId = "global";
+		}
+
+		local.role = getCurrentActiveRole();
+		if (local.role != "admin" && !isWorkspaceAccessible(local.siteId, local.role)) {
+			fxRenderJson({
+				"success": false,
+				"SUCCESS": false,
+				"message": "You do not have permission to manage How Do I links for this workspace.",
+				"MESSAGE": "You do not have permission to manage How Do I links for this workspace."
+			}, 403);
+			return;
+		}
+
+		if (local.categoryId <= 0) {
+			fxRenderJson({
+				"success": false,
+				"SUCCESS": false,
+				"message": "Please select a How Do I category (e.g. Apply For, Pay For, Report).",
+				"MESSAGE": "Please select a How Do I category (e.g. Apply For, Pay For, Report)."
+			}, 422);
+			return;
+		}
+		if (!Len(local.question)) {
+			fxRenderJson({
+				"success": false,
+				"SUCCESS": false,
+				"message": "Please enter a question or action label (e.g. Driveway Permit, Property Taxes).",
+				"MESSAGE": "Please enter a question or action label (e.g. Driveway Permit, Property Taxes)."
+			}, 422);
+			return;
+		}
+		if (!Len(local.destinationUrl)) {
+			fxRenderJson({
+				"success": false,
+				"SUCCESS": false,
+				"message": "Please select or enter a destination URL.",
+				"MESSAGE": "Please select or enter a destination URL."
+			}, 422);
+			return;
+		}
+
+		local.actor = spCurrentActor();
+
+		try {
+			if (local.id > 0) {
+				queryExecute("
+					SET ANSI_NULLS ON;
+					SET QUOTED_IDENTIFIER ON;
+					UPDATE how_do_i_items
+					SET category_id = :catId,
+					    siteid = :siteId,
+					    question = :question,
+					    destination_type = :dtype,
+					    page_id = :pageId,
+					    form_id = :formId,
+					    destination_url = :durl,
+					    open_in_new_tab = :newTab,
+					    is_featured_mega_menu = :mega,
+					    sort_order = :sortOrder,
+					    is_published = :pub,
+					    modified_by = :actor,
+					    updatedat = SYSUTCDATETIME()
+					WHERE id = :id AND deletedat IS NULL
+				", {
+					catId: { value: local.categoryId, cfsqltype: "cf_sql_integer" },
+					siteId: { value: local.siteId, cfsqltype: "cf_sql_nvarchar" },
+					question: { value: local.question, cfsqltype: "cf_sql_nvarchar" },
+					dtype: { value: local.destinationType, cfsqltype: "cf_sql_nvarchar" },
+					pageId: local.pageId > 0 ? { value: local.pageId, cfsqltype: "cf_sql_integer" } : { value: "", null: true, cfsqltype: "cf_sql_integer" },
+					formId: local.formId > 0 ? { value: local.formId, cfsqltype: "cf_sql_integer" } : { value: "", null: true, cfsqltype: "cf_sql_integer" },
+					durl: { value: local.destinationUrl, cfsqltype: "cf_sql_nvarchar" },
+					newTab: { value: local.openInNewTab ? 1 : 0, cfsqltype: "cf_sql_bit" },
+					mega: { value: local.isFeaturedMegaMenu ? 1 : 0, cfsqltype: "cf_sql_bit" },
+					sortOrder: { value: local.sortOrder, cfsqltype: "cf_sql_integer" },
+					pub: { value: local.isPublished ? 1 : 0, cfsqltype: "cf_sql_bit" },
+					actor: { value: local.actor, cfsqltype: "cf_sql_nvarchar" },
+					id: { value: local.id, cfsqltype: "cf_sql_integer" }
+				}, { datasource: "ChelanCountyWebsite" });
+			} else {
+				if (local.sortOrder <= 0) {
+					local.maxQ = queryExecute("
+						SELECT ISNULL(MAX(sort_order), 0) + 10 AS nextSort
+						FROM how_do_i_items
+						WHERE category_id = :catId AND deletedat IS NULL
+					", { catId: { value: local.categoryId, cfsqltype: "cf_sql_integer" } }, { datasource: "ChelanCountyWebsite" });
+					local.sortOrder = Val(local.maxQ.nextSort ?: 10);
+				}
+
+				local.ins = queryExecute("
+					SET ANSI_NULLS ON;
+					SET QUOTED_IDENTIFIER ON;
+					INSERT INTO how_do_i_items (
+						category_id, siteid, question, destination_type, page_id, form_id,
+						destination_url, open_in_new_tab, is_featured_mega_menu, sort_order,
+						is_published, created_by, modified_by, createdat, updatedat
+					)
+					OUTPUT INSERTED.id AS newId
+					VALUES (
+						:catId, :siteId, :question, :dtype, :pageId, :formId,
+						:durl, :newTab, :mega, :sortOrder,
+						:pub, :actor, :actor, SYSUTCDATETIME(), SYSUTCDATETIME()
+					)
+				", {
+					catId: { value: local.categoryId, cfsqltype: "cf_sql_integer" },
+					siteId: { value: local.siteId, cfsqltype: "cf_sql_nvarchar" },
+					question: { value: local.question, cfsqltype: "cf_sql_nvarchar" },
+					dtype: { value: local.destinationType, cfsqltype: "cf_sql_nvarchar" },
+					pageId: local.pageId > 0 ? { value: local.pageId, cfsqltype: "cf_sql_integer" } : { value: "", null: true, cfsqltype: "cf_sql_integer" },
+					formId: local.formId > 0 ? { value: local.formId, cfsqltype: "cf_sql_integer" } : { value: "", null: true, cfsqltype: "cf_sql_integer" },
+					durl: { value: local.destinationUrl, cfsqltype: "cf_sql_nvarchar" },
+					newTab: { value: local.openInNewTab ? 1 : 0, cfsqltype: "cf_sql_bit" },
+					mega: { value: local.isFeaturedMegaMenu ? 1 : 0, cfsqltype: "cf_sql_bit" },
+					sortOrder: { value: local.sortOrder, cfsqltype: "cf_sql_integer" },
+					pub: { value: local.isPublished ? 1 : 0, cfsqltype: "cf_sql_bit" },
+					actor: { value: local.actor, cfsqltype: "cf_sql_nvarchar" }
+				}, { datasource: "ChelanCountyWebsite" });
+				local.id = Val(local.ins.newId);
+			}
+
+			fxRenderJson({
+				"success": true,
+				"SUCCESS": true,
+				"message": "How Do I item saved.",
+				"MESSAGE": "How Do I item saved.",
+				"id": local.id,
+				"ID": local.id
+			});
+		} catch (any e) {
+			writeLog(type="error", file="pages", text="saveHowDoIItem failed: #e.message# #e.detail#");
+			fxRenderJson({
+				"success": false,
+				"SUCCESS": false,
+				"message": "Unable to save How Do I item: #e.message#",
+				"MESSAGE": "Unable to save How Do I item: #e.message#"
+			}, 500);
+		}
+	}
+
+	/**
+	 * POST JSON: Soft-delete a "How Do I" item
+	 */
+	function deleteHowDoIItem() {
+		ensureHowDoITables();
+		local.body = fxReadJsonBody();
+		local.req = IsStruct(local.body) ? local.body : params;
+		local.id = Val(local.req.id ?: 0);
+
+		if (local.id <= 0) {
+			fxRenderJson({
+				"success": false,
+				"SUCCESS": false,
+				"message": "Valid item ID is required.",
+				"MESSAGE": "Valid item ID is required."
+			}, 400);
+			return;
+		}
+
+		try {
+			local.itemQ = queryExecute("SELECT siteid FROM how_do_i_items WHERE id = :id AND deletedat IS NULL", {
+				id: { value: local.id, cfsqltype: "cf_sql_integer" }
+			}, { datasource: "ChelanCountyWebsite" });
+
+			if (local.itemQ.recordCount == 0) {
+				fxRenderJson({
+					"success": false,
+					"SUCCESS": false,
+					"message": "Item not found.",
+					"MESSAGE": "Item not found."
+				}, 404);
+				return;
+			}
+
+			local.role = getCurrentActiveRole();
+			if (local.role != "admin" && !isWorkspaceAccessible(local.itemQ.siteid, local.role)) {
+				fxRenderJson({
+					"success": false,
+					"SUCCESS": false,
+					"message": "You do not have permission to delete this item.",
+					"MESSAGE": "You do not have permission to delete this item."
+				}, 403);
+				return;
+			}
+
+			queryExecute("
+				SET ANSI_NULLS ON;
+				SET QUOTED_IDENTIFIER ON;
+				UPDATE how_do_i_items
+				SET deletedat = SYSUTCDATETIME(), modified_by = :actor
+				WHERE id = :id
+			", {
+				actor: { value: spCurrentActor(), cfsqltype: "cf_sql_nvarchar" },
+				id: { value: local.id, cfsqltype: "cf_sql_integer" }
+			}, { datasource: "ChelanCountyWebsite" });
+
+			fxRenderJson({
+				"success": true,
+				"SUCCESS": true,
+				"message": "How Do I item removed.",
+				"MESSAGE": "How Do I item removed."
+			});
+		} catch (any e) {
+			writeLog(type="error", file="pages", text="deleteHowDoIItem failed: #e.message# #e.detail#");
+			fxRenderJson({
+				"success": false,
+				"SUCCESS": false,
+				"message": "Unable to delete item: #e.message#",
+				"MESSAGE": "Unable to delete item: #e.message#"
+			}, 500);
+		}
+	}
+
+	/**
+	 * POST JSON: Reorder "How Do I" items (accepts { items: [{id, sortOrder}] })
+	 */
+	function reorderHowDoIItems() {
+		ensureHowDoITables();
+		local.body = fxReadJsonBody();
+		local.req = IsStruct(local.body) ? local.body : params;
+
+		if (!StructKeyExists(local.req, "items") || !IsArray(local.req.items)) {
+			fxRenderJson({
+				"success": false,
+				"SUCCESS": false,
+				"message": "Items array is required for reordering.",
+				"MESSAGE": "Items array is required for reordering."
+			}, 400);
+			return;
+		}
+
+		try {
+			transaction {
+				for (local.entry in local.req.items) {
+					local.itemId = Val(local.entry.id ?: 0);
+					local.sortVal = Int(Val(local.entry.sortOrder ?: 0));
+					if (local.itemId > 0) {
+						queryExecute("
+							SET ANSI_NULLS ON;
+							SET QUOTED_IDENTIFIER ON;
+							UPDATE how_do_i_items
+							SET sort_order = :sortOrder, updatedat = SYSUTCDATETIME()
+							WHERE id = :id AND deletedat IS NULL
+						", {
+							sortOrder: { value: local.sortVal, cfsqltype: "cf_sql_integer" },
+							id: { value: local.itemId, cfsqltype: "cf_sql_integer" }
+						}, { datasource: "ChelanCountyWebsite" });
+					}
+				}
+			}
+			fxRenderJson({
+				"success": true,
+				"SUCCESS": true,
+				"message": "Order updated.",
+				"MESSAGE": "Order updated."
+			});
+		} catch (any e) {
+			fxRenderJson({
+				"success": false,
+				"SUCCESS": false,
+				"message": "Unable to update order: #e.message#",
+				"MESSAGE": "Unable to update order: #e.message#"
+			}, 500);
+		}
+	}
+
+	/**
+	 * POST JSON (Admin Only): Create or update a "How Do I" category
+	 */
+	function saveHowDoICategory() {
+		ensureHowDoITables();
+		if (getCurrentActiveRole() != "admin") {
+			fxRenderJson({
+				"success": false,
+				"SUCCESS": false,
+				"message": "Only Administrators can manage How Do I categories.",
+				"MESSAGE": "Only Administrators can manage How Do I categories."
+			}, 403);
+			return;
+		}
+
+		local.body = fxReadJsonBody();
+		local.req = IsStruct(local.body) ? local.body : params;
+		local.id = Val(local.req.id ?: 0);
+		local.name = Left(Trim(local.req.name ?: ""), 120);
+		local.slug = slugifyText(Len(Trim(local.req.slug ?: "")) ? local.req.slug : local.name);
+		local.icon = Left(Trim(local.req.icon ?: "help-circle"), 50);
+		local.description = Left(Trim(local.req.description ?: ""), 255);
+		local.sortOrder = Int(Val(local.req.sortOrder ?: 100));
+		local.isActive = StructKeyExists(local.req, "isActive") ? fxToBoolean(local.req.isActive, true) : true;
+
+		if (!Len(local.name)) {
+			fxRenderJson({
+				"success": false,
+				"SUCCESS": false,
+				"message": "Category name is required.",
+				"MESSAGE": "Category name is required."
+			}, 422);
+			return;
+		}
+		if (!Len(local.slug)) {
+			local.slug = "cat-" & LCase(Left(CreateUUID(), 6));
+		}
+
+		try {
+			if (local.id > 0) {
+				queryExecute("
+					SET ANSI_NULLS ON;
+					SET QUOTED_IDENTIFIER ON;
+					UPDATE how_do_i_categories
+					SET name = :name,
+					    slug = :slug,
+					    icon = :icon,
+					    description = :desc,
+					    sort_order = :sortOrder,
+					    is_active = :isActive,
+					    updatedat = SYSUTCDATETIME()
+					WHERE id = :id AND deletedat IS NULL
+				", {
+					name: { value: local.name, cfsqltype: "cf_sql_nvarchar" },
+					slug: { value: local.slug, cfsqltype: "cf_sql_nvarchar" },
+					icon: { value: local.icon, cfsqltype: "cf_sql_nvarchar" },
+					desc: { value: local.description, cfsqltype: "cf_sql_nvarchar" },
+					sortOrder: { value: local.sortOrder, cfsqltype: "cf_sql_integer" },
+					isActive: { value: local.isActive ? 1 : 0, cfsqltype: "cf_sql_bit" },
+					id: { value: local.id, cfsqltype: "cf_sql_integer" }
+				}, { datasource: "ChelanCountyWebsite" });
+			} else {
+				local.ins = queryExecute("
+					SET ANSI_NULLS ON;
+					SET QUOTED_IDENTIFIER ON;
+					INSERT INTO how_do_i_categories (name, slug, icon, description, sort_order, is_active, is_system, createdat, updatedat)
+					OUTPUT INSERTED.id AS newId
+					VALUES (:name, :slug, :icon, :desc, :sortOrder, :isActive, 0, SYSUTCDATETIME(), SYSUTCDATETIME())
+				", {
+					name: { value: local.name, cfsqltype: "cf_sql_nvarchar" },
+					slug: { value: local.slug, cfsqltype: "cf_sql_nvarchar" },
+					icon: { value: local.icon, cfsqltype: "cf_sql_nvarchar" },
+					desc: { value: local.description, cfsqltype: "cf_sql_nvarchar" },
+					sortOrder: { value: local.sortOrder, cfsqltype: "cf_sql_integer" },
+					isActive: { value: local.isActive ? 1 : 0, cfsqltype: "cf_sql_bit" }
+				}, { datasource: "ChelanCountyWebsite" });
+				local.id = Val(local.ins.newId);
+			}
+			fxRenderJson({
+				"success": true,
+				"SUCCESS": true,
+				"message": "Category saved.",
+				"MESSAGE": "Category saved.",
+				"id": local.id,
+				"ID": local.id
+			});
+		} catch (any e) {
+			fxRenderJson({
+				"success": false,
+				"SUCCESS": false,
+				"message": "Unable to save category: #e.message#",
+				"MESSAGE": "Unable to save category: #e.message#"
+			}, 500);
+		}
+	}
+
+	/**
+	 * POST JSON (Admin Only): Soft-delete a custom "How Do I" category
+	 */
+	function deleteHowDoICategory() {
+		ensureHowDoITables();
+		if (getCurrentActiveRole() != "admin") {
+			fxRenderJson({
+				"success": false,
+				"SUCCESS": false,
+				"message": "Only Administrators can delete How Do I categories.",
+				"MESSAGE": "Only Administrators can delete How Do I categories."
+			}, 403);
+			return;
+		}
+		local.body = fxReadJsonBody();
+		local.req = IsStruct(local.body) ? local.body : params;
+		local.id = Val(local.req.id ?: 0);
+
+		if (local.id <= 0) {
+			fxRenderJson({
+				"success": false,
+				"SUCCESS": false,
+				"message": "Valid category ID is required.",
+				"MESSAGE": "Valid category ID is required."
+			}, 400);
+			return;
+		}
+
+		try {
+			local.cntQ = queryExecute("
+				SELECT COUNT(*) AS itemCnt FROM how_do_i_items WHERE category_id = :id AND deletedat IS NULL
+			", { id: { value: local.id, cfsqltype: "cf_sql_integer" } }, { datasource: "ChelanCountyWebsite" });
+
+			if (Val(local.cntQ.itemCnt) > 0) {
+				local.errMsg = "Cannot delete a category that still has #Val(local.cntQ.itemCnt)# active How Do I link(s). Reassign or remove its links first.";
+				fxRenderJson({
+					"success": false,
+					"SUCCESS": false,
+					"message": local.errMsg,
+					"MESSAGE": local.errMsg
+				}, 422);
+				return;
+			}
+
+			queryExecute("
+				SET ANSI_NULLS ON;
+				SET QUOTED_IDENTIFIER ON;
+				UPDATE how_do_i_categories SET deletedat = SYSUTCDATETIME() WHERE id = :id
+			", { id: { value: local.id, cfsqltype: "cf_sql_integer" } }, { datasource: "ChelanCountyWebsite" });
+
+			fxRenderJson({
+				"success": true,
+				"SUCCESS": true,
+				"message": "Category deleted.",
+				"MESSAGE": "Category deleted."
+			});
+		} catch (any e) {
+			fxRenderJson({
+				"success": false,
+				"SUCCESS": false,
+				"message": "Unable to delete category: #e.message#",
+				"MESSAGE": "Unable to delete category: #e.message#"
+			}, 500);
+		}
+	}
+
+	/**
+	 * Ensures dbo.how_do_i_categories and dbo.how_do_i_items exist and are seeded with the 12 standard Chelan County categories and initial county links.
+	 */
+	private void function ensureHowDoITables() {
+		try {
+			queryExecute("
+				IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[how_do_i_categories]') AND type in (N'U'))
+				BEGIN
+					CREATE TABLE [dbo].[how_do_i_categories] (
+						[id]          INT IDENTITY(1,1) NOT NULL,
+						[name]        NVARCHAR(120) NOT NULL,
+						[slug]        NVARCHAR(120) NOT NULL,
+						[icon]        NVARCHAR(50) NOT NULL CONSTRAINT [DF_how_do_i_cat_icon] DEFAULT (N'help-circle'),
+						[description] NVARCHAR(255) NULL,
+						[sort_order]  INT NOT NULL CONSTRAINT [DF_how_do_i_cat_sort] DEFAULT (0),
+						[is_active]   BIT NOT NULL CONSTRAINT [DF_how_do_i_cat_active] DEFAULT (1),
+						[is_system]   BIT NOT NULL CONSTRAINT [DF_how_do_i_cat_system] DEFAULT (0),
+						[createdat]   DATETIME2(7) NOT NULL CONSTRAINT [DF_how_do_i_cat_createdat] DEFAULT (SYSUTCDATETIME()),
+						[updatedat]   DATETIME2(7) NOT NULL CONSTRAINT [DF_how_do_i_cat_updatedat] DEFAULT (SYSUTCDATETIME()),
+						[deletedat]   DATETIME2(7) NULL,
+						CONSTRAINT [PK_how_do_i_categories] PRIMARY KEY CLUSTERED ([id] ASC)
+					);
+				END;
+
+				IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[how_do_i_items]') AND type in (N'U'))
+				BEGIN
+					CREATE TABLE [dbo].[how_do_i_items] (
+						[id]                    INT IDENTITY(1,1) NOT NULL,
+						[category_id]           INT NOT NULL,
+						[siteid]                NVARCHAR(100) NOT NULL CONSTRAINT [DF_how_do_i_items_siteid] DEFAULT (N'global'),
+						[question]              NVARCHAR(255) NOT NULL,
+						[destination_type]      NVARCHAR(30) NOT NULL CONSTRAINT [DF_how_do_i_items_dtype] DEFAULT (N'page'),
+						[page_id]               INT NULL,
+						[form_id]               INT NULL,
+						[destination_url]       NVARCHAR(1000) NOT NULL,
+						[open_in_new_tab]       BIT NOT NULL CONSTRAINT [DF_how_do_i_items_newtab] DEFAULT (0),
+						[is_featured_mega_menu] BIT NOT NULL CONSTRAINT [DF_how_do_i_items_mega] DEFAULT (1),
+						[sort_order]            INT NOT NULL CONSTRAINT [DF_how_do_i_items_sort] DEFAULT (0),
+						[is_published]          BIT NOT NULL CONSTRAINT [DF_how_do_i_items_pub] DEFAULT (1),
+						[created_by]            NVARCHAR(255) NULL,
+						[modified_by]           NVARCHAR(255) NULL,
+						[createdat]             DATETIME2(7) NOT NULL CONSTRAINT [DF_how_do_i_items_createdat] DEFAULT (SYSUTCDATETIME()),
+						[updatedat]             DATETIME2(7) NOT NULL CONSTRAINT [DF_how_do_i_items_updatedat] DEFAULT (SYSUTCDATETIME()),
+						[deletedat]             DATETIME2(7) NULL,
+						CONSTRAINT [PK_how_do_i_items] PRIMARY KEY CLUSTERED ([id] ASC),
+						CONSTRAINT [FK_how_do_i_items_categories] FOREIGN KEY ([category_id]) REFERENCES [dbo].[how_do_i_categories] ([id])
+					);
+				END;
+			", {}, { datasource: "ChelanCountyWebsite" });
+
+			// Seed the 12 standard Chelan County categories if table is empty
+			local.catCheck = queryExecute("SELECT COUNT(*) AS cnt FROM how_do_i_categories WHERE deletedat IS NULL", {}, { datasource: "ChelanCountyWebsite" });
+			if (Val(local.catCheck.cnt) == 0) {
+				queryExecute("
+					INSERT INTO how_do_i_categories (name, slug, icon, description, sort_order, is_active, is_system)
+					VALUES
+					(N'Apply For',   N'apply-for',   N'clipboard-list', N'Permits, licenses, employment, and county program applications.', 10, 1, 1),
+					(N'Contact',     N'contact',     N'phone',          N'Department directories, elected officials, and office contact desks.', 20, 1, 1),
+					(N'Find',        N'find',        N'search',         N'Locate county resources, election results, court statuses, and districts.', 30, 1, 1),
+					(N'File A',      N'file-a',      N'file-text',      N'Submit official claims, petitions, and formal filings.', 40, 1, 1),
+					(N'Join',        N'join',        N'users',          N'Volunteer boards, advisory committees, and community programs.', 50, 1, 1),
+					(N'Pay For',     N'pay-for',     N'hard-drive',     N'Online payments for property taxes, court costs, probation, and accounts.', 60, 1, 1),
+					(N'Learn About', N'learn-about', N'book',           N'Educational guides, court protection orders, and county initiatives.', 70, 1, 1),
+					(N'Register To', N'register-to', N'check-square',   N'Voter registration, jury duty check-in, and court classes.', 80, 1, 1),
+					(N'Report',      N'report',      N'megaphone',      N'Report road hazards, code violations, pest infestations, or tips.', 90, 1, 1),
+					(N'Request',     N'request',     N'mail',           N'Public records requests, court case records, and vital certificates.', 100, 1, 1),
+					(N'Search For',  N'search-for',  N'globe',          N'Public document archives, parcel lookups, and jail registries.', 110, 1, 1),
+					(N'View',        N'view',        N'eye',            N'Court calendars, dockets, schedules, and public hearings.', 120, 1, 1)
+				", {}, { datasource: "ChelanCountyWebsite" });
+			}
+
+			// Seed initial authentic Chelan County "How Do I" links if how_do_i_items is completely empty
+			local.itemCheck = queryExecute("SELECT COUNT(*) AS cnt FROM how_do_i_items", {}, { datasource: "ChelanCountyWebsite" });
+			if (Val(local.itemCheck.cnt) == 0) {
+				local.catRows = queryExecute("SELECT id, slug FROM how_do_i_categories WHERE deletedat IS NULL", {}, { datasource: "ChelanCountyWebsite" });
+				local.catMap = {};
+				for (local.cr in local.catRows) {
+					local.catMap[local.cr.slug] = local.cr.id;
+				}
+
+				local.seedItems = [
+					// Apply For
+					{ cat: "apply-for", site: "human-resources", q: "A Job", type: "custom", url: "/human-resources/jobs", newTab: 0, mega: 1, sort: 10 },
+					{ cat: "apply-for", site: "public-works", q: "A New Address", type: "page", url: "/public-works/pages/addressing-and-road-naming", newTab: 0, mega: 1, sort: 20 },
+					{ cat: "apply-for", site: "public-works", q: "Adopt a County Road Program", type: "page", url: "/solid-waste-management/pages/adopt-a-county-road", newTab: 0, mega: 1, sort: 30 },
+					{ cat: "apply-for", site: "community-development", q: "Building Permit", type: "page", url: "/community-development/pages/building", newTab: 0, mega: 1, sort: 40 },
+					{ cat: "apply-for", site: "sheriff", q: "Concealed Pistol License (CPL)", type: "external", url: "https://chelanwa.permitium.com/ccw/start", newTab: 1, mega: 1, sort: 50 },
+					{ cat: "apply-for", site: "public-works", q: "Driveway Permit", type: "page", url: "/public-works/pages/development", newTab: 0, mega: 0, sort: 60 },
+					{ cat: "apply-for", site: "public-works", q: "Event Permit", type: "page", url: "/public-works/pages/event-permits-in-chelan-county", newTab: 0, mega: 0, sort: 70 },
+					{ cat: "apply-for", site: "assessors", q: "Property Tax Relief & Senior Exemption", type: "page", url: "/assessor/pages/current-use-exemptions", newTab: 0, mega: 1, sort: 80 },
+					{ cat: "apply-for", site: "clerk", q: "Passport", type: "page", url: "/clerk/pages/passport-information", newTab: 0, mega: 0, sort: 90 },
+
+					// Contact
+					{ cat: "contact", site: "commissioners", q: "Board of Commissioners", type: "custom", url: "/board-of-commissioners/contacts", newTab: 0, mega: 1, sort: 10 },
+					{ cat: "contact", site: "Auditor", q: "Chelan County Elections", type: "custom", url: "/elections/contacts", newTab: 0, mega: 1, sort: 20 },
+					{ cat: "contact", site: "clerk", q: "Court Clerk", type: "custom", url: "/clerk/contacts", newTab: 0, mega: 1, sort: 30 },
+					{ cat: "contact", site: "assessors", q: "County Assessor's Office", type: "custom", url: "/assessor/contacts", newTab: 0, mega: 1, sort: 40 },
+					{ cat: "contact", site: "sheriff", q: "Sheriff's Office", type: "custom", url: "/sheriff/contacts", newTab: 0, mega: 1, sort: 50 },
+
+					// Find
+					{ cat: "find", site: "Auditor", q: "Election Results", type: "page", url: "/elections/pages/current-election-results", newTab: 0, mega: 1, sort: 10 },
+					{ cat: "find", site: "public-works", q: "Flood Control Zone District", type: "custom", url: "/flood-control-zone-district", newTab: 0, mega: 1, sort: 20 },
+					{ cat: "find", site: "assessors", q: "Property Levy Rates & Tax District Distribution", type: "page", url: "/assessor/pages/property-tax-summary-reports", newTab: 0, mega: 1, sort: 30 },
+
+					// File A
+					{ cat: "file-a", site: "commissioners", q: "Claim Against Chelan County", type: "custom", url: "/files/prosecutor/documents/Claim for Damages Form 2026 (fillable).pdf", newTab: 1, mega: 1, sort: 10 },
+					{ cat: "file-a", site: "assessors", q: "Petition to Board of Equalization", type: "page", url: "/assessor/pages/appeals", newTab: 0, mega: 1, sort: 20 },
+
+					// Join
+					{ cat: "join", site: "commissioners", q: "County Advisory Boards & Commissions", type: "page", url: "/board-of-commissioners/pages/boards-and-commissions", newTab: 0, mega: 1, sort: 10 },
+					{ cat: "join", site: "sheriff", q: "Sheriff Volunteer Search & Rescue", type: "page", url: "/sheriff/pages/search-and-rescue", newTab: 0, mega: 1, sort: 20 },
+
+					// Pay For
+					{ cat: "pay-for", site: "treasurer", q: "Property Taxes", type: "page", url: "/treasurer/pages/make-payments", newTab: 0, mega: 1, sort: 10 },
+					{ cat: "pay-for", site: "clerk", q: "Court Cost and Restitution", type: "page", url: "/clerk/pages/financial-collector", newTab: 0, mega: 1, sort: 20 },
+					{ cat: "pay-for", site: "global", q: "Jail Commissary Account", type: "page", url: "/regional-jail/pages/inmate-phone-and-commissary-accounts-", newTab: 0, mega: 1, sort: 30 },
+					{ cat: "pay-for", site: "global", q: "Probation Fees Online", type: "page", url: "/district-court-probation/pages/probation-online-payments", newTab: 0, mega: 1, sort: 40 },
+
+					// Learn About
+					{ cat: "learn-about", site: "clerk", q: "Domestic Violence Assistance & Protection", type: "page", url: "/clerk/pages/domestic-violence-assistance", newTab: 0, mega: 1, sort: 10 },
+					{ cat: "learn-about", site: "assessors", q: "How Property Taxes Are Calculated", type: "page", url: "/assessor/pages/frequently-asked-questions", newTab: 0, mega: 1, sort: 20 },
+
+					// Register To
+					{ cat: "register-to", site: "clerk", q: "Jury Duty", type: "external", url: "https://jury.co.chelan.wa.us", newTab: 1, mega: 1, sort: 10 },
+					{ cat: "register-to", site: "clerk", q: "Parenting Class", type: "page", url: "/clerk/pages/parenting-class", newTab: 0, mega: 1, sort: 20 },
+					{ cat: "register-to", site: "Auditor", q: "Vote", type: "external", url: "https://www.sos.wa.gov/elections/myvote/", newTab: 1, mega: 1, sort: 30 },
+
+					// Report
+					{ cat: "report", site: "community-development", q: "Code Violation", type: "page", url: "/community-development/pages/code-enforcement", newTab: 0, mega: 1, sort: 10 },
+					{ cat: "report", site: "public-works", q: "Icy Road Conditions", type: "form", url: "/public-works/forms/report-a-problem", newTab: 0, mega: 1, sort: 20 },
+					{ cat: "report", site: "public-works", q: "Missing Traffic Signs", type: "form", url: "/public-works/forms/report-a-problem", newTab: 0, mega: 1, sort: 30 },
+					{ cat: "report", site: "sheriff", q: "Submit A Crime Tip", type: "form", url: "/sheriff/forms/submit-a-tip", newTab: 0, mega: 1, sort: 40 },
+
+					// Request
+					{ cat: "request", site: "pio", q: "Public Records", type: "custom", url: "/public-records-request", newTab: 0, mega: 1, sort: 10 },
+					{ cat: "request", site: "Auditor", q: "A Death Certificate", type: "external", url: "https://doh.wa.gov/licenses-permits-and-certificates/vital-records/ordering-vital-record/death-record", newTab: 1, mega: 1, sort: 20 },
+					{ cat: "request", site: "community-development", q: "Flood Elevation Certificate", type: "custom", url: "/community-development/contacts", newTab: 0, mega: 1, sort: 30 },
+
+					// Search For
+					{ cat: "search-for", site: "commissioners", q: "Commissioner's Public Documents", type: "page", url: "/board-of-commissioners/pages/document-and-record-search", newTab: 0, mega: 1, sort: 10 },
+					{ cat: "search-for", site: "assessors", q: "Property & Parcel Search", type: "page", url: "/assessor/pages/parcel-and-sale-search", newTab: 0, mega: 1, sort: 20 },
+					{ cat: "search-for", site: "global", q: "Inmate / Arrestee Roster", type: "page", url: "/regional-jail/pages/jail-registry--inmate-list", newTab: 0, mega: 1, sort: 30 },
+
+					// View
+					{ cat: "view", site: "clerk", q: "Court Dockets and Schedules", type: "page", url: "/clerk/pages/court-calendars", newTab: 0, mega: 1, sort: 10 },
+					{ cat: "view", site: "assessors", q: "Monthly Property Sales Reports", type: "page", url: "/assessor/pages/monthly-sales-reports", newTab: 0, mega: 1, sort: 20 }
+				];
+
+				for (local.s in local.seedItems) {
+					if (StructKeyExists(local.catMap, local.s.cat)) {
+						queryExecute("
+							SET ANSI_NULLS ON;
+							SET QUOTED_IDENTIFIER ON;
+							INSERT INTO how_do_i_items (
+								category_id, siteid, question, destination_type, destination_url,
+								open_in_new_tab, is_featured_mega_menu, sort_order, is_published, created_by, modified_by
+							)
+							VALUES (
+								:catId, :siteId, :q, :dtype, :durl,
+								:newTab, :mega, :sortOrder, 1, N'System Seed', N'System Seed'
+							)
+						", {
+							catId: { value: local.catMap[local.s.cat], cfsqltype: "cf_sql_integer" },
+							siteId: { value: local.s.site, cfsqltype: "cf_sql_nvarchar" },
+							q: { value: local.s.q, cfsqltype: "cf_sql_nvarchar" },
+							dtype: { value: local.s.type, cfsqltype: "cf_sql_nvarchar" },
+							durl: { value: local.s.url, cfsqltype: "cf_sql_nvarchar" },
+							newTab: { value: local.s.newTab, cfsqltype: "cf_sql_bit" },
+							mega: { value: local.s.mega, cfsqltype: "cf_sql_bit" },
+							sortOrder: { value: local.s.sort, cfsqltype: "cf_sql_integer" }
+						}, { datasource: "ChelanCountyWebsite" });
+					}
+				}
+			}
+		} catch (any e) {
+			writeLog(type="error", file="pages", text="ensureHowDoITables failed: #e.message# #e.detail#");
+		}
+	}
+
+	/**
+	 * Loads all How Do I categories ordered by sort_order
+	 */
+	private array function loadHowDoICategories(boolean includeInactive = false) {
+		local.cats = [];
+		try {
+			local.sql = "
+				SELECT c.id, c.name, c.slug, c.icon, c.description, c.sort_order, c.is_active, c.is_system,
+				       (SELECT COUNT(*) FROM how_do_i_items i WHERE i.category_id = c.id AND i.deletedat IS NULL) AS total_items
+				FROM how_do_i_categories c
+				WHERE c.deletedat IS NULL
+			";
+			if (!arguments.includeInactive) {
+				local.sql &= " AND c.is_active = 1";
+			}
+			local.sql &= " ORDER BY c.sort_order ASC, c.name ASC";
+
+			local.q = queryExecute(local.sql, {}, { datasource: "ChelanCountyWebsite" });
+			for (local.r in local.q) {
+				ArrayAppend(local.cats, {
+					"id": Val(local.r.id),
+					"name": local.r.name ?: "",
+					"slug": local.r.slug ?: "",
+					"icon": Len(Trim(local.r.icon ?: "")) ? local.r.icon : "help-circle",
+					"description": local.r.description ?: "",
+					"sortOrder": Val(local.r.sort_order),
+					"isActive": (local.r.is_active == 1),
+					"isSystem": (local.r.is_system == 1),
+					"totalItems": Val(local.r.total_items)
+				});
+			}
+		} catch (any e) {
+			writeLog(type="error", file="pages", text="loadHowDoICategories failed: #e.message# #e.detail#");
+		}
+		return local.cats;
+	}
+
+	/**
+	 * Loads How Do I items scoped to a workspace or across all workspaces
+	 */
+	private array function loadHowDoIItems(string requestedWs = "", boolean includeAllWorkspaces = false) {
+		local.items = [];
+		try {
+			local.wsMap = {};
+			for (local.w in getMasterWorkspaces()) {
+				local.info = {
+					"id": local.w.id,
+					"name": local.w.name,
+					"badge": local.w.badge ?: "Dept",
+					"badgeClass": local.w.badgeClass ?: "badge-neutral"
+				};
+				local.wsMap[LCase(local.w.id)] = local.info;
+				if (StructKeyExists(local.w, "code") && Len(local.w.code)) local.wsMap[LCase(local.w.code)] = local.info;
+				if (StructKeyExists(local.w, "alias") && Len(local.w.alias)) local.wsMap[LCase(local.w.alias)] = local.info;
+				if (StructKeyExists(local.w, "virtual_directory") && Len(local.w.virtual_directory)) local.wsMap[LCase(local.w.virtual_directory)] = local.info;
+			}
+
+			local.params = {};
+			local.whereClause = "WHERE i.deletedat IS NULL AND c.deletedat IS NULL";
+
+			if (!arguments.includeAllWorkspaces && Len(Trim(arguments.requestedWs)) && arguments.requestedWs != "all" && arguments.requestedWs != "global") {
+				local.cands = getCandidateSiteIds(arguments.requestedWs);
+				if (ArrayLen(local.cands) == 0) ArrayAppend(local.cands, LCase(Trim(arguments.requestedWs)));
+				local.inList = [];
+				for (local.idx = 1; local.idx <= ArrayLen(local.cands); local.idx++) {
+					local.pKey = "hdiSite" & local.idx;
+					ArrayAppend(local.inList, ":" & local.pKey);
+					local.params[local.pKey] = { value: local.cands[local.idx], cfsqltype: "cf_sql_nvarchar" };
+				}
+				local.whereClause &= " AND i.siteid IN (" & ArrayToList(local.inList, ", ") & ")";
+			}
+
+			local.q = queryExecute("
+				SELECT i.id, i.category_id, i.siteid, i.question, i.destination_type, i.page_id, i.form_id,
+				       i.destination_url, i.open_in_new_tab, i.is_featured_mega_menu, i.sort_order, i.is_published,
+				       i.created_by, i.modified_by, i.createdat, i.updatedat,
+				       c.name AS category_name, c.slug AS category_slug, c.icon AS category_icon, c.sort_order AS category_sort
+				FROM how_do_i_items i
+				INNER JOIN how_do_i_categories c ON c.id = i.category_id
+				" & local.whereClause & "
+				ORDER BY c.sort_order ASC, c.name ASC, i.sort_order ASC, i.question ASC
+			", local.params, { datasource: "ChelanCountyWebsite" });
+
+			for (local.r in local.q) {
+				local.sKey = LCase(Trim(local.r.siteid ?: "global"));
+				local.wsInfo = StructKeyExists(local.wsMap, local.sKey)
+					? local.wsMap[local.sKey]
+					: { "id": local.sKey, "name": local.r.siteid ?: "Global", "badge": "County", "badgeClass": "badge-neutral" };
+
+				local.updatedStr = "";
+				if (IsDate(local.r.updatedat)) {
+					local.updatedStr = DateFormat(local.r.updatedat, "mm/dd/yyyy");
+				}
+
+				ArrayAppend(local.items, {
+					"id": Val(local.r.id),
+					"categoryId": Val(local.r.category_id),
+					"categoryName": local.r.category_name ?: "",
+					"categorySlug": local.r.category_slug ?: "",
+					"categoryIcon": local.r.category_icon ?: "help-circle",
+					"siteId": local.r.siteid ?: "global",
+					"workspaceName": local.wsInfo.name,
+					"workspaceBadge": local.wsInfo.badge,
+					"workspaceBadgeClass": local.wsInfo.badgeClass,
+					"question": local.r.question ?: "",
+					"destinationType": local.r.destination_type ?: "custom",
+					"pageId": Val(local.r.page_id ?: 0),
+					"formId": Val(local.r.form_id ?: 0),
+					"destinationUrl": local.r.destination_url ?: "",
+					"openInNewTab": (local.r.open_in_new_tab == 1),
+					"isFeaturedMegaMenu": (local.r.is_featured_mega_menu == 1),
+					"sortOrder": Val(local.r.sort_order),
+					"isPublished": (local.r.is_published == 1),
+					"updated": local.updatedStr,
+					"author": Len(Trim(local.r.modified_by ?: "")) ? local.r.modified_by : (local.r.created_by ?: "Admin")
+				});
+			}
+		} catch (any e) {
+			writeLog(type="error", file="pages", text="loadHowDoIItems failed: #e.message# #e.detail#");
+		}
+		return local.items;
 	}
 
 }

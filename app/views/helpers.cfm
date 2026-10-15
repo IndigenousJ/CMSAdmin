@@ -205,6 +205,12 @@ public string function svgIcon(required string name, string class = "", numeric 
 		case "alert-triangle":
 		case "warning":
 			return '<svg #baseAttrs#><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>';
+		case "video":
+		case "zoom":
+			return '<svg #baseAttrs#><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></svg>';
+		case "paperclip":
+		case "attachment":
+			return '<svg #baseAttrs#><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>';
 		case "bug":
 		case "pest":
 		case "infestation":

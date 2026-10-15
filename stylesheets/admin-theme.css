@@ -1479,7 +1479,7 @@ button, input, select, textarea {
    Footer
    ========================================================================== */
 .admin-footer {
-  margin-top: auto;
+  margin-top: 50px;
   padding-top: 1.5rem;
   border-top: 1px solid var(--admin-border);
   display: flex;

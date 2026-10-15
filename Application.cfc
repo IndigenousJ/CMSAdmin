@@ -18,27 +18,27 @@ component output="false" {
 	this.bufferOutput = true;
 
 	// Set up the application paths.
-	this.appDir     = expandPath("./app/");
-	this.vendorDir  = expandPath("./vendor/");
+	this.appDir     = this.wheels.rootPath & "app/";
+	this.vendorDir  = this.wheels.rootPath & "vendor/";
 	this.wheelsDir  = this.vendorDir & "wheels/";
 	// Set up the mappings for the application.
 	this.mappings["/app"]     = this.appDir;
 	this.mappings["/vendor"]  = this.vendorDir;
 	this.mappings["/wheels"]  = this.wheelsDir;
-	this.mappings["/tests"] = expandPath("./tests");
-	this.mappings["/config"] = expandPath("./config");
-	this.mappings["/plugins"] = expandPath("./plugins");
+	this.mappings["/tests"] = this.wheels.rootPath & "tests";
+	this.mappings["/config"] = this.wheels.rootPath & "config";
+	this.mappings["/plugins"] = this.wheels.rootPath & "plugins";
 
 	// We turn on "sessionManagement" by default since the Flash uses it.
 	this.sessionManagement = true;
 	this.datasource = "ChelanCountyWebsite";
 
 	// If a plugin has a jar or class file, automatically add the mapping to this.javasettings.
-	// Legacy plugins system (DEPRECATED â€” superseded by vendor/<name>/ packages).
+	// Legacy plugins system (DEPRECATED — superseded by vendor/<name>/ packages).
 	// Only scan when a plugins/ directory exists, so a removed plugins/ dir does not
 	// error on engines whose directoryList() throws on a missing path (e.g. RustCFML;
 	// Lucee tolerates it). This lookup is slated for removal in the next major.
-	this.wheels.pluginDir = expandPath("./plugins");
+	this.wheels.pluginDir = this.wheels.rootPath & "plugins";
 	this.wheels.pluginFolders = DirectoryExists(this.wheels.pluginDir)
 		? DirectoryList(this.wheels.pluginDir, "true", "path", "*.class|*.jar|*.java")
 		: [];
@@ -56,7 +56,7 @@ component output="false" {
 		}
 	}
 
-	// Framework Java resources â€” the bundled jBCrypt jar used by the global
+	// Framework Java resources — the bundled jBCrypt jar used by the global
 	// bcryptHash()/bcryptVerify() helpers. LoadPaths are read at app init, so
 	// the jar must be present under vendor/wheels/resources/java before the
 	// first request; on JVM engines this makes bcrypt run in native Java
@@ -78,7 +78,7 @@ component output="false" {
 		this.env = {};
 
 		// Load base .env file
-		envFilePath = expandPath("./.env");
+		envFilePath = this.wheels.rootPath & ".env";
 		if (fileExists(envFilePath)) {
 			loadEnvFile(envFilePath, this.env);
 		}
@@ -102,7 +102,7 @@ component output="false" {
 
 		// Load environment-specific .env file if it exists
 		if (len(currentEnv)) {
-			envSpecificPath = expandPath("./.env." & currentEnv);
+			envSpecificPath = this.wheels.rootPath & ".env." & currentEnv;
 			if (fileExists(envSpecificPath)) {
 				loadEnvFile(envSpecificPath, this.env);
 			}

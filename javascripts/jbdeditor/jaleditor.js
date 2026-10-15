@@ -11,6 +11,16 @@
   // 1. DOM, SELECTION & SANITIZER UTILITIES
   // ==========================================
 
+  function escapeHTML(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
   function createElement(tag, attrs = {}, children = []) {
     const el = document.createElement(tag);
 
@@ -1424,28 +1434,68 @@ class A11yValidator {
         }
       };
 
+      // Determine initial protocol type
+      let initialType = 'https';
+      let cleanUrl = (currentUrl || '').trim();
+      if (/^mailto:/i.test(cleanUrl)) {
+        initialType = 'mailto';
+        cleanUrl = cleanUrl.replace(/^mailto:/i, '').trim();
+      } else if (/^tel:/i.test(cleanUrl)) {
+        initialType = 'tel';
+        cleanUrl = cleanUrl.replace(/^tel:/i, '').trim();
+      } else if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
+        initialType = 'https';
+      }
+
       // Auto-detect if current link is external or a file
       const isExtOrFile = isExternal(currentUrl) || isFile(currentUrl);
-      const shouldBlank = targetBlank || isExtOrFile;
-      const shouldAda = shouldBlank || (ariaLabel && ariaLabel.toLowerCase().includes('new '));
+      const shouldBlank = (initialType === 'mailto' || initialType === 'tel') ? false : (targetBlank || isExtOrFile);
+      const shouldAda = (initialType === 'mailto' || initialType === 'tel') ? false : (shouldBlank || (ariaLabel && ariaLabel.toLowerCase().includes('new ')));
 
       const form = createElement('div', { className: 'jbd-form-grid' });
 
       form.innerHTML = `
         <div class="jbd-form-group">
-          <label for="jbd-link-text">Display Text</label>
-          <input type="text" id="jbd-link-text" class="jbd-input" value="${currentText}" placeholder="Link text (optional)" />
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
+            <label style="margin-bottom:0; font-weight:600; font-size:12px; color:var(--jbd-color-text,#334155);">Link Type</label>
+            <button type="button" class="jbd-btn jbd-btn-xs" id="jbd-link-browse-doc" style="display:inline-flex; align-items:center; gap:5px; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-weight:600; padding:3px 8px; border-radius:4px; font-size:11.5px; cursor:pointer;" title="Browse Chelan County Media Library documents folder to link a PDF or file">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              <span>Link PDF / Document (Media Library)</span>
+            </button>
+          </div>
+          <div style="display:flex; gap:6px;" id="jbd-link-type-tabs" role="radiogroup" aria-label="Link Protocol Type">
+            <button type="button" class="jbd-btn jbd-btn-xs jbd-link-proto-btn ${initialType === 'https' ? 'is-active' : ''}" data-type="https" style="flex:1; justify-content:center; padding:5px 8px; font-weight:600;" aria-checked="${initialType === 'https' ? 'true' : 'false'}" role="radio">
+              https:// (Web)
+            </button>
+            <button type="button" class="jbd-btn jbd-btn-xs jbd-link-proto-btn ${initialType === 'mailto' ? 'is-active' : ''}" data-type="mailto" style="flex:1; justify-content:center; padding:5px 8px; font-weight:600;" aria-checked="${initialType === 'mailto' ? 'true' : 'false'}" role="radio">
+              mailto: (Email)
+            </button>
+            <button type="button" class="jbd-btn jbd-btn-xs jbd-link-proto-btn ${initialType === 'tel' ? 'is-active' : ''}" data-type="tel" style="flex:1; justify-content:center; padding:5px 8px; font-weight:600;" aria-checked="${initialType === 'tel' ? 'true' : 'false'}" role="radio">
+              tel: (Phone)
+            </button>
+          </div>
         </div>
+
         <div class="jbd-form-group">
-          <label for="jbd-link-url">URL Destination <span aria-hidden="true">*</span></label>
-          <input type="url" id="jbd-link-url" class="jbd-input" value="${currentUrl || 'https://'}" placeholder="https://example.com or document.pdf" required aria-required="true" />
+          <label for="jbd-link-text">Display Text</label>
+          <input type="text" id="jbd-link-text" class="jbd-input" value="${escapeHTML(currentText)}" placeholder="Link text (optional)" />
         </div>
-        <div class="jbd-form-group-checkbox">
+
+        <div class="jbd-form-group">
+          <label for="jbd-link-url" id="jbd-link-url-label">URL Destination <span aria-hidden="true">*</span></label>
+          <input type="text" id="jbd-link-url" class="jbd-input" value="${escapeHTML(cleanUrl ? (initialType === 'https' ? (currentUrl || 'https://') : cleanUrl) : (initialType === 'https' ? 'https://' : ''))}" placeholder="https://example.com or document.pdf" required aria-required="true" />
+          <small id="jbd-link-url-hint" style="color:var(--jbd-color-muted, #64748b); font-size:11.5px; margin-top:4px; display:block;">
+            Enter full web address (https://...) or choose a document.
+          </small>
+        </div>
+
+        <div class="jbd-form-group-checkbox" id="jbd-link-blank-group">
           <label for="jbd-link-blank">
             <input type="checkbox" id="jbd-link-blank" ${shouldBlank ? 'checked' : ''} />
             Open link in new window/tab (<code>_blank</code>)
           </label>
         </div>
+
         <div class="jbd-form-group-checkbox" id="jbd-link-ada-group" style="margin-top:0.35rem;">
           <label for="jbd-link-ada">
             <input type="checkbox" id="jbd-link-ada" ${shouldAda ? 'checked' : ''} />
@@ -1458,13 +1508,157 @@ class A11yValidator {
       `;
 
       const urlInput = form.querySelector('#jbd-link-url');
+      const textInput = form.querySelector('#jbd-link-text');
+      const urlLabel = form.querySelector('#jbd-link-url-label');
+      const urlHint = form.querySelector('#jbd-link-url-hint');
+      const blankGroup = form.querySelector('#jbd-link-blank-group');
+      const adaGroup = form.querySelector('#jbd-link-ada-group');
       const blankInput = form.querySelector('#jbd-link-blank');
       const adaInput = form.querySelector('#jbd-link-ada');
+      const protoBtns = form.querySelectorAll('.jbd-link-proto-btn');
+      const browseDocBtn = form.querySelector('#jbd-link-browse-doc');
+
+      let currentProto = initialType;
+
+      const setLinkType = (type, updateVal = true) => {
+        currentProto = type;
+        protoBtns.forEach(btn => {
+          const isMatch = btn.dataset.type === type;
+          btn.classList.toggle('is-active', isMatch);
+          btn.setAttribute('aria-checked', isMatch ? 'true' : 'false');
+          if (isMatch) {
+            btn.style.background = '#0284c7';
+            btn.style.color = '#ffffff';
+            btn.style.borderColor = '#0284c7';
+          } else {
+            btn.style.background = '';
+            btn.style.color = '';
+            btn.style.borderColor = '';
+          }
+        });
+
+        if (type === 'mailto') {
+          urlLabel.innerHTML = 'Email Address <span aria-hidden="true">*</span>';
+          urlInput.placeholder = 'e.g. name@chelancounty.gov';
+          urlHint.textContent = 'Email links launch the visitor’s default email client (mailto:).';
+          if (blankGroup) blankGroup.style.display = 'none';
+          if (adaGroup) adaGroup.style.display = 'none';
+          blankInput.checked = false;
+          adaInput.checked = false;
+
+          if (updateVal) {
+            let v = urlInput.value.trim();
+            if (v.startsWith('https://') || v.startsWith('http://') || v.startsWith('tel:')) {
+              urlInput.value = '';
+            } else if (v.startsWith('mailto:')) {
+              urlInput.value = v.substring(7);
+            }
+          }
+        } else if (type === 'tel') {
+          urlLabel.innerHTML = 'Phone Number <span aria-hidden="true">*</span>';
+          urlInput.placeholder = 'e.g. (509) 667-6200';
+          urlHint.textContent = 'Phone links allow direct dialing on mobile devices and phone apps (tel:).';
+          if (blankGroup) blankGroup.style.display = 'none';
+          if (adaGroup) adaGroup.style.display = 'none';
+          blankInput.checked = false;
+          adaInput.checked = false;
+
+          if (updateVal) {
+            let v = urlInput.value.trim();
+            if (v.startsWith('https://') || v.startsWith('http://') || v.startsWith('mailto:')) {
+              urlInput.value = '';
+            } else if (v.startsWith('tel:')) {
+              urlInput.value = v.substring(4);
+            }
+          }
+        } else {
+          // https / Web / Document
+          urlLabel.innerHTML = 'URL Destination <span aria-hidden="true">*</span>';
+          urlInput.placeholder = 'https://example.com or /files/.../document.pdf';
+          urlHint.textContent = 'Enter full web address (https://...) or choose a document.';
+          if (blankGroup) blankGroup.style.display = '';
+          if (adaGroup) adaGroup.style.display = '';
+
+          if (updateVal) {
+            let v = urlInput.value.trim();
+            if (v.startsWith('mailto:') || v.startsWith('tel:') || !v) {
+              urlInput.value = 'https://';
+            }
+          }
+        }
+      };
+
+      protoBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          setLinkType(btn.dataset.type, true);
+          urlInput.focus();
+        });
+      });
+
+      // Initialize state for current type
+      setLinkType(initialType, false);
+
+      // Media Library Document Picker Integration
+      const openDocPicker = () => {
+        const onSelectDoc = (data) => {
+          const docUrl = (data && (data.url || (data.data && data.data.webUrl))) || '';
+          const docTitle = (data && (data.title || (data.data && (data.data.title || data.data.name)))) || '';
+          if (docUrl) {
+            setLinkType('https', false);
+            urlInput.value = docUrl;
+            if (!textInput.value || textInput.value === 'https://') {
+              textInput.value = docTitle || docUrl.split('/').pop().replace(/\.[^/.]+$/, '');
+            }
+            blankInput.checked = true;
+            blankInput.dataset.userModified = 'true';
+            adaInput.checked = true;
+            adaInput.dataset.userModified = 'true';
+            urlInput.dispatchEvent(new Event('input'));
+            urlInput.focus();
+          }
+        };
+
+        if (typeof window !== 'undefined' && typeof window.openMediaPicker === 'function') {
+          window.openMediaPicker('document', { folder: 'documents', onSelect: onSelectDoc });
+        } else if (typeof window !== 'undefined') {
+          let modal = document.getElementById('mediaPickerModal');
+          let backdrop = document.getElementById('mediaPickerModalBackdrop');
+          let iframe = document.getElementById('mediaPickerIframe');
+          if (modal && iframe) {
+            window._mediaPickerCustomCallback = onSelectDoc;
+            modal.style.zIndex = '100005';
+            if (backdrop) backdrop.style.zIndex = '100004';
+            iframe.src = '/media/picker?picker=document&type=document&folder=documents&ws=all&callback=onMediaSelectedFromPicker';
+            modal.style.display = 'flex';
+            modal.classList.add('open');
+            if (backdrop) {
+              backdrop.style.display = 'block';
+              backdrop.style.opacity = '1';
+              backdrop.style.visibility = 'visible';
+            }
+          }
+        }
+      };
+
+      if (browseDocBtn) {
+        browseDocBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          openDocPicker();
+        });
+      }
 
       // Auto-toggle when user types an external URL or file URL
       urlInput.addEventListener('input', () => {
         const v = urlInput.value.trim();
-        if (isExternal(v) || isFile(v)) {
+        if (/^mailto:/i.test(v) && currentProto !== 'mailto') {
+          setLinkType('mailto', false);
+        } else if (/^tel:/i.test(v) && currentProto !== 'tel') {
+          setLinkType('tel', false);
+        } else if (/^https?:\/\//i.test(v) && currentProto !== 'https') {
+          setLinkType('https', false);
+        }
+
+        if (currentProto === 'https' && (isExternal(v) || isFile(v))) {
           if (!blankInput.dataset.userModified) {
             blankInput.checked = true;
           }
@@ -1496,10 +1690,41 @@ class A11yValidator {
             label: 'Save Link',
             className: 'jbd-btn-primary',
             onClick: (d, overlay) => {
-              const url = urlInput.value.trim();
-              const text = overlay.querySelector('#jbd-link-text').value.trim();
-              const blank = blankInput.checked;
-              const ada = adaInput.checked;
+              let url = urlInput.value.trim();
+              let text = textInput.value.trim();
+              let blank = blankInput.checked;
+              let ada = adaInput.checked;
+
+              if (currentProto === 'mailto') {
+                const emailClean = url.replace(/^mailto:/i, '').trim();
+                if (!emailClean) {
+                  urlInput.focus();
+                  return;
+                }
+                url = `mailto:${emailClean}`;
+                if (!text) text = emailClean;
+                blank = false;
+                ada = false;
+              } else if (currentProto === 'tel') {
+                const phoneClean = url.replace(/^tel:/i, '').trim();
+                if (!phoneClean) {
+                  urlInput.focus();
+                  return;
+                }
+                const telClean = phoneClean.replace(/[^\d+]/g, '');
+                url = `tel:${telClean || phoneClean}`;
+                if (!text) text = phoneClean;
+                blank = false;
+                ada = false;
+              } else {
+                if (!url || url === 'https://' || url === 'http://') {
+                  urlInput.focus();
+                  return;
+                }
+                if (!/^[a-z]+:/i.test(url) && !url.startsWith('/') && !url.startsWith('#')) {
+                  url = 'https://' + url;
+                }
+              }
 
               if (url) {
                 onConfirm({ url, text, blank, ada });
@@ -4332,29 +4557,68 @@ static openAnchorDialog({ currentName = '', currentText = '', onConfirm }) {
 
 openImageModal() {
       if (this.isSourceMode) return;
-      Dialog.openImageDialog({
-        onConfirm: ({ src, alt, caption, align, width }) => {
-          let alignClass = '';
-          if (align === 'left') alignClass = 'jbd-image-left';
-          if (align === 'center') alignClass = 'jbd-image-center';
-          if (align === 'right') alignClass = 'jbd-image-right';
+      // Save selection before opening external modal
+      this.savedSelectionRange = saveSelection(this.contentArea);
+      const self = this;
 
-          let html = '';
-          if (caption) {
-            html = `<figure class="jbd-image ${alignClass}" style="max-width: ${width};">
+      if (typeof window.openMediaPicker === 'function') {
+        window.openMediaPicker('image', {
+          onSelect: function(payload) {
+            // payload: { html, url, title, alt, data }
+            const src = payload.url || (payload.data && payload.data.webUrl) || '';
+            const alt = payload.alt || payload.title || (payload.data && (payload.data.altText || payload.data.title)) || '';
+            const caption = (payload.data && payload.data.caption) || '';
+            const alignClass = '';
+
+            if (!src) return;
+
+            self.contentArea.focus();
+            if (self.savedSelectionRange) {
+              restoreSelection(self.savedSelectionRange);
+            }
+
+            let html = '';
+            if (caption) {
+              html = `<figure class="jbd-image" style="max-width: 100%;">
+              <img src="${src}" alt="${escapeHTML(alt || caption)}" style="width: 100%; height: auto;" loading="lazy" />
+              <figcaption>${escapeHTML(caption)}</figcaption>
+            </figure>`;
+            } else {
+              html = `<div class="jbd-image" style="max-width: 100%;">
+              <img src="${src}" alt="${escapeHTML(alt)}" style="width: 100%; height: auto;" loading="lazy" />
+            </div>`;
+            }
+
+            insertAtCursor(self.contentArea, html, self.savedSelectionRange);
+            self._handleInput();
+          }
+        });
+      } else {
+        // Fallback to old dialog if media picker not available
+        Dialog.openImageDialog({
+          onConfirm: ({ src, alt, caption, align, width }) => {
+            let alignClass = '';
+            if (align === 'left') alignClass = 'jbd-image-left';
+            if (align === 'center') alignClass = 'jbd-image-center';
+            if (align === 'right') alignClass = 'jbd-image-right';
+
+            let html = '';
+            if (caption) {
+              html = `<figure class="jbd-image ${alignClass}" style="max-width: ${width};">
               <img src="${src}" alt="${alt || caption}" style="width: 100%; height: auto;" />
               <figcaption>${caption}</figcaption>
             </figure>`;
-          } else {
-            html = `<div class="jbd-image ${alignClass}" style="max-width: ${width};">
+            } else {
+              html = `<div class="jbd-image ${alignClass}" style="max-width: ${width};">
               <img src="${src}" alt="${alt}" style="width: 100%; height: auto;" />
             </div>`;
-          }
+            }
 
-          insertAtCursor(this.contentArea, html, this.savedSelectionRange);
-          this._handleInput();
-        }
-      });
+            insertAtCursor(this.contentArea, html, this.savedSelectionRange);
+            this._handleInput();
+          }
+        });
+      }
     }
 
     openTableModal() {

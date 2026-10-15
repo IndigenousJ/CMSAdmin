@@ -42,7 +42,25 @@
 		.get(name="documentationFormBuilder", pattern="documentation/form-builder", to="documentation##formBuilder")
 		.get(name="documentation", pattern="documentation", to="documentation##index")
 
-		// Pages and Folder Explorer Routes
+		// Pages, How Do I, and Folder Explorer Routes
+		.get(name="pagesHowDoI", pattern="pages/how-do-i", to="pages##howDoI")
+		.get(name="pagesHowDoIAlt", pattern="pages/howdoi", to="pages##howDoI")
+		.get(name="pagesHowDoICamel", pattern="pages/howDoI", to="pages##howDoI")
+		.post(name="saveHowDoIItem", pattern="pages/how-do-i/save", to="pages##saveHowDoIItem")
+		.post(name="saveHowDoIItemCamel", pattern="pages/saveHowDoIItem", to="pages##saveHowDoIItem")
+		.post(name="saveHowDoIItemHyphen", pattern="pages/save-how-do-i-item", to="pages##saveHowDoIItem")
+		.post(name="deleteHowDoIItem", pattern="pages/how-do-i/delete", to="pages##deleteHowDoIItem")
+		.post(name="deleteHowDoIItemCamel", pattern="pages/deleteHowDoIItem", to="pages##deleteHowDoIItem")
+		.post(name="deleteHowDoIItemHyphen", pattern="pages/delete-how-do-i-item", to="pages##deleteHowDoIItem")
+		.post(name="reorderHowDoIItems", pattern="pages/how-do-i/reorder", to="pages##reorderHowDoIItems")
+		.post(name="reorderHowDoIItemsCamel", pattern="pages/reorderHowDoIItems", to="pages##reorderHowDoIItems")
+		.post(name="reorderHowDoIItemsHyphen", pattern="pages/reorder-how-do-i-items", to="pages##reorderHowDoIItems")
+		.post(name="saveHowDoICategory", pattern="pages/how-do-i/category/save", to="pages##saveHowDoICategory")
+		.post(name="saveHowDoICategoryCamel", pattern="pages/saveHowDoICategory", to="pages##saveHowDoICategory")
+		.post(name="saveHowDoICategoryHyphen", pattern="pages/save-how-do-i-category", to="pages##saveHowDoICategory")
+		.post(name="deleteHowDoICategory", pattern="pages/how-do-i/category/delete", to="pages##deleteHowDoICategory")
+		.post(name="deleteHowDoICategoryCamel", pattern="pages/deleteHowDoICategory", to="pages##deleteHowDoICategory")
+		.post(name="deleteHowDoICategoryHyphen", pattern="pages/delete-how-do-i-category", to="pages##deleteHowDoICategory")
 		.get(name="addFolderExplorer", pattern="pages/add-folder-explorer", to="pages##folderExplorer")
 		.get(name="pagesMenuItems", pattern="pages/menu-items", to="pages##menuItems")
 		.get(name="pagesWorkspaceForms", pattern="pages/workspace-forms", to="pages##workspaceForms")
@@ -62,6 +80,21 @@
 		.post(name="mediaUpdateMeta", pattern="media/update-meta", to="media##updateMeta")
 		.get(name="mediaPicker", pattern="media/picker", to="media##picker")
 
+		// Events / County Calendar Routes
+		.get(name="eventsIndex", pattern="events", to="events##index")
+		.get(name="calendarIndex", pattern="calendar", to="events##index")
+		.post(name="eventsSave", pattern="events/save", to="events##save")
+		.post(name="eventsDelete", pattern="events/delete", to="events##delete")
+		.post(name="eventsCategorySave", pattern="events/category/save", to="events##saveCategory")
+		.post(name="eventsCategorySaveCamel", pattern="events/saveCategory", to="events##saveCategory")
+		.post(name="eventsCategorySaveHyphen", pattern="events/save-category", to="events##saveCategory")
+		.post(name="eventsCategoryDelete", pattern="events/category/delete", to="events##deleteCategory")
+		.post(name="eventsCategoryDeleteCamel", pattern="events/deleteCategory", to="events##deleteCategory")
+		.post(name="eventsCategoryDeleteHyphen", pattern="events/delete-category", to="events##deleteCategory")
+		.get(name="eventsIcs", pattern="events/ics", to="events##exportIcs")
+		.get(name="eventsExportIcs", pattern="events/exportIcs", to="events##exportIcs")
+		.get(name="eventsExportIcsHyphen", pattern="events/export-ics", to="events##exportIcs")
+
 		// Users & Roles Security Routes
 		.get(name="usersIndex", pattern="users", to="users##index")
 		.get(name="usersRoles", pattern="users/roles", to="users##roles")
@@ -79,6 +112,10 @@
 		.post(name="workspacesCreate", pattern="workspaces/create", to="workspaces##create")
 		.get(name="workspacesEdit", pattern="workspaces/edit", to="workspaces##edit")
 		.post(name="workspacesUpdate", pattern="workspaces/update", to="workspaces##update")
+
+		// Settings & Startup Routes
+		.get(name="settingsIndex", pattern="settings", to="settings##startup")
+		.get(name="settingsStartup", pattern="settings/startup", to="settings##startup")
 
 		// Authentication & Security Routes
 		.get(name="login", pattern="login", to="sessions##new")

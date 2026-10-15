@@ -6,80 +6,116 @@ component extends="Controller" {
 	}
 
 	/**
-	 * Media Library directory, browsing, search & asset inspector
+	 * Media Library directory, browsing, search & asset inspector (Standalone File Explorer format)
 	 */
 	function index() {
 		variables.pageTitle = "Media Library";
-		
+
 		local.role = getCurrentActiveRole();
 		local.isAdmin = (local.role eq "admin");
 
-		// Active workspace resolution: URL param takes precedence, then active header cookie, else "all" (admin only)
 		local.cookieWs = StructKeyExists(cookie, "cmsadmin_workspace") && Len(Trim(cookie.cmsadmin_workspace)) ? LCase(Trim(cookie.cmsadmin_workspace)) : "";
 		if (local.cookieWs eq "global") {
 			local.cookieWs = "all";
 		}
 
-		// Load workspaces metadata strictly restricted to the user's accessible scopes
 		variables.workspaces = getWorkspacesList();
 
 		if (local.isAdmin) {
-			// Admin has full access to "all" (All Workspaces) or any individual workspace
 			if (StructKeyExists(params, "ws") && Len(Trim(params.ws))) {
 				variables.currentWs = LCase(Trim(params.ws));
-			} else if (Len(local.cookieWs)) {
+			} else if (Len(local.cookieWs) && local.cookieWs neq "all") {
 				variables.currentWs = local.cookieWs;
+			} else if (ArrayLen(variables.workspaces) gt 0) {
+				variables.currentWs = variables.workspaces[1].id;
 			} else {
-				variables.currentWs = "all";
+				variables.currentWs = "community-development";
 			}
 		} else {
-			// Non-admin can ONLY view their assigned workspaces (never "all" or unassigned workspaces)
 			local.targetWs = StructKeyExists(params, "ws") && Len(Trim(params.ws)) ? LCase(Trim(params.ws)) : local.cookieWs;
 			if (Len(local.targetWs) && local.targetWs neq "all" && local.targetWs neq "global" && isWorkspaceAccessible(local.targetWs, local.role)) {
 				variables.currentWs = local.targetWs;
 			} else if (ArrayLen(variables.workspaces) gt 0) {
 				variables.currentWs = variables.workspaces[1].id;
 			} else {
-				variables.currentWs = "site-main";
+				variables.currentWs = "community-development";
 			}
 		}
 
-		// Determine human-readable label for active workspace
-		variables.activeWsName = "All Workspaces";
-		local.normCurrent = normalizeWorkspaceId(variables.currentWs);
+		// Resolve canonical workspace object
+		local.wsObj = resolveUserActiveWorkspace(requestedWs=variables.currentWs, role=local.role);
+		local.vDir = "";
+		if (StructKeyExists(local.wsObj, "virtual_directory") && Len(Trim(local.wsObj.virtual_directory))) {
+			local.vDir = Trim(local.wsObj.virtual_directory);
+		} else if (StructKeyExists(local.wsObj, "virtualdir") && Len(Trim(local.wsObj.virtualdir))) {
+			local.vDir = Trim(local.wsObj.virtualdir);
+		}
+
+		if (!Len(local.vDir)) {
+			local.targetFolders = getFoldersForWorkspace(variables.currentWs);
+			for (local.f in local.targetFolders) {
+				if (DirectoryExists("C:\inetpub\cmsadmin2.0\files\" & local.f)) {
+					local.vDir = local.f;
+					break;
+				}
+			}
+			if (!Len(local.vDir)) {
+				local.vDir = variables.currentWs;
+			}
+		}
+
+		// Ensure \files\[workspace.virtual_directory]\images|documents exists on disk
+		local.rootDisk = "C:\inetpub\cmsadmin2.0\files\";
+		local.vDir = Replace(Replace(Trim(local.vDir), "\", "/", "all"), "/", "", "all");
+		if (!Len(local.vDir)) {
+			local.vDir = "community-development";
+		}
+		local.wsDisk = local.rootDisk & local.vDir;
+
+		try {
+			if (!DirectoryExists(local.wsDisk)) {
+				DirectoryCreate(local.wsDisk);
+			}
+			if (!DirectoryExists(local.wsDisk & "\images")) {
+				DirectoryCreate(local.wsDisk & "\images");
+			}
+			// If legacy media folder exists with files and images is empty, copy over files
+			if (DirectoryExists(local.wsDisk & "\media") && DirectoryExists(local.wsDisk & "\images")) {
+				local.mediaFiles = DirectoryList(local.wsDisk & "\media", false, "query");
+				local.imgFiles = DirectoryList(local.wsDisk & "\images", false, "query");
+				if (local.mediaFiles.recordCount > 0 && local.imgFiles.recordCount == 0) {
+					for (local.mi = 1; local.mi <= local.mediaFiles.recordCount; local.mi++) {
+						local.srcFile = local.wsDisk & "\media\" & local.mediaFiles.name[local.mi];
+						local.dstFile = local.wsDisk & "\images\" & local.mediaFiles.name[local.mi];
+						if (compareNoCase(local.mediaFiles.type[local.mi], "file") == 0 && !FileExists(local.dstFile)) {
+							FileCopy(local.srcFile, local.dstFile);
+						}
+					}
+				}
+			}
+			if (!DirectoryExists(local.wsDisk & "\documents")) {
+				DirectoryCreate(local.wsDisk & "\documents");
+			}
+		} catch (any dirErr) {
+			try {
+				WriteLog(file="media_explorer", type="warning", text="Workspace directory setup warning: " & dirErr.message);
+			} catch (any logErr) {}
+		}
+
+		variables.activeWsFolder = local.vDir;
+		variables.activeWsVirtualDir = local.vDir;
+
+		// Friendly name
+		variables.activeWsName = StructKeyExists(local.wsObj, "name") && Len(Trim(local.wsObj.name)) ? local.wsObj.name : variables.currentWs;
 		for (local.w in variables.workspaces) {
-			if (local.w.id eq variables.currentWs || normalizeWorkspaceId(local.w.id) eq local.normCurrent || (StructKeyExists(local.w, "alias") && local.w.alias eq variables.currentWs)) {
+			if (local.w.id eq variables.currentWs) {
 				variables.activeWsName = local.w.name;
 				break;
 			}
 		}
-
-		variables.currentFolder = StructKeyExists(params, "folder") ? LCase(Trim(params.folder)) : "all";
-		variables.currentType = StructKeyExists(params, "type") ? LCase(Trim(params.type)) : "all";
-		variables.currentSearch = StructKeyExists(params, "search") ? Trim(params.search) : "";
-		variables.currentAltStatus = StructKeyExists(params, "altStatus") ? LCase(Trim(params.altStatus)) : "all";
-		variables.currentSort = StructKeyExists(params, "sort") ? LCase(Trim(params.sort)) : "newest";
-		variables.currentView = StructKeyExists(params, "view") ? LCase(Trim(params.view)) : "grid";
-		variables.pickerMode = StructKeyExists(params, "picker") ? LCase(Trim(params.picker)) : "";
-		variables.selectedId = StructKeyExists(params, "selected") ? Trim(params.selected) : "";
-
-		// Fetch media assets STRICTLY for the active workspace folder
-		local.workspaceAssets = getMediaAssets(ws = variables.currentWs);
-
-		// Compute library KPIs based ONLY on the active workspace
-		variables.stats = calculateStats(local.workspaceAssets);
-
-		// Apply multi-facet filtering (folder, type, search, altStatus, sort)
-		variables.assets = filterAssets(
-			assets = local.workspaceAssets,
-			ws = variables.currentWs,
-			folder = variables.currentFolder,
-			type = variables.currentType,
-			search = variables.currentSearch,
-			altStatus = variables.currentAltStatus,
-			sort = variables.currentSort
-		);
 	}
+
+
 
 	/**
 	 * Dedicated Add / Upload File view
@@ -109,7 +145,7 @@ component extends="Controller" {
 	}
 
 	/**
-	 * Standalone Media Picker interface for iframe / modal dialog embed
+	 * Standalone Media Picker interface for iframe / modal dialog embed (File Explorer format)
 	 */
 	function picker() {
 		variables.pageTitle = "Select Media Asset";
@@ -119,48 +155,116 @@ component extends="Controller" {
 		variables.workspaces = getWorkspacesList();
 
 		local.cookieWs = StructKeyExists(cookie, "cmsadmin_workspace") && Len(Trim(cookie.cmsadmin_workspace)) ? LCase(Trim(cookie.cmsadmin_workspace)) : "";
-		local.targetWs = StructKeyExists(params, "ws") && Len(Trim(params.ws)) ? LCase(Trim(params.ws)) : local.cookieWs;
-		if (local.targetWs eq "global") local.targetWs = "all";
-
-		if (Len(local.targetWs) && local.targetWs neq "all" && local.targetWs neq "global") {
-			variables.currentWs = local.targetWs;
-		} else if (local.isAdmin && local.targetWs eq "all") {
-			variables.currentWs = "all";
-		} else if (ArrayLen(variables.workspaces) gt 0) {
-			variables.currentWs = variables.workspaces[1].id;
-		} else {
-			variables.currentWs = "all";
+		if (local.cookieWs eq "global") {
+			local.cookieWs = "all";
 		}
 
-		variables.pickerMode = StructKeyExists(params, "picker") ? LCase(Trim(params.picker)) : "image";
-		if (StructKeyExists(params, "type") && Len(Trim(params.type))) {
-			variables.currentType = LCase(Trim(params.type));
-		} else if (variables.pickerMode eq "document") {
-			variables.currentType = "document";
-		} else if (variables.pickerMode eq "image") {
-			variables.currentType = "image";
+		if (local.isAdmin) {
+			if (StructKeyExists(params, "ws") && Len(Trim(params.ws)) && LCase(Trim(params.ws)) neq "all" && LCase(Trim(params.ws)) neq "global") {
+				variables.currentWs = LCase(Trim(params.ws));
+			} else if (Len(local.cookieWs) && local.cookieWs neq "all") {
+				variables.currentWs = local.cookieWs;
+			} else if (ArrayLen(variables.workspaces) gt 0) {
+				variables.currentWs = variables.workspaces[1].id;
+			} else {
+				variables.currentWs = "community-development";
+			}
 		} else {
-			variables.currentType = "all";
+			local.targetWs = StructKeyExists(params, "ws") && Len(Trim(params.ws)) ? LCase(Trim(params.ws)) : local.cookieWs;
+			if (Len(local.targetWs) && local.targetWs neq "all" && local.targetWs neq "global" && isWorkspaceAccessible(local.targetWs, local.role)) {
+				variables.currentWs = local.targetWs;
+			} else if (ArrayLen(variables.workspaces) gt 0) {
+				variables.currentWs = variables.workspaces[1].id;
+			} else {
+				variables.currentWs = "community-development";
+			}
 		}
 
-		variables.currentFolder = StructKeyExists(params, "folder") ? LCase(Trim(params.folder)) : "all";
-		variables.currentSearch = StructKeyExists(params, "search") ? Trim(params.search) : "";
-		variables.currentAltStatus = "all";
-		variables.currentSort = "newest";
-		variables.currentView = "grid";
-		variables.callback = StructKeyExists(params, "callback") ? Trim(params.callback) : "onMediaSelected";
+		// Resolve canonical workspace object
+		local.wsObj = resolveUserActiveWorkspace(requestedWs=variables.currentWs, role=local.role);
+		local.vDir = "";
+		if (StructKeyExists(local.wsObj, "virtual_directory") && Len(Trim(local.wsObj.virtual_directory))) {
+			local.vDir = Trim(local.wsObj.virtual_directory);
+		} else if (StructKeyExists(local.wsObj, "virtualdir") && Len(Trim(local.wsObj.virtualdir))) {
+			local.vDir = Trim(local.wsObj.virtualdir);
+		}
 
-		local.workspaceAssets = getMediaAssets(ws = variables.currentWs);
-		variables.stats = calculateStats(local.workspaceAssets);
-		variables.assets = filterAssets(
-			assets = local.workspaceAssets,
-			ws = variables.currentWs,
-			folder = variables.currentFolder,
-			type = variables.currentType,
-			search = variables.currentSearch,
-			altStatus = variables.currentAltStatus,
-			sort = variables.currentSort
-		);
+		if (!Len(local.vDir)) {
+			local.targetFolders = getFoldersForWorkspace(variables.currentWs);
+			for (local.f in local.targetFolders) {
+				if (DirectoryExists("C:\inetpub\cmsadmin2.0\files\" & local.f)) {
+					local.vDir = local.f;
+					break;
+				}
+			}
+			if (!Len(local.vDir)) {
+				local.vDir = variables.currentWs;
+			}
+		}
+
+		// Ensure \files\[workspace.virtual_directory]\images|documents exists on disk
+		local.rootDisk = "C:\inetpub\cmsadmin2.0\files\";
+		local.vDir = Replace(Replace(Trim(local.vDir), "\", "/", "all"), "/", "", "all");
+		if (!Len(local.vDir)) {
+			local.vDir = "community-development";
+		}
+		local.wsDisk = local.rootDisk & local.vDir;
+
+		try {
+			if (!DirectoryExists(local.wsDisk)) {
+				DirectoryCreate(local.wsDisk);
+			}
+			if (!DirectoryExists(local.wsDisk & "\images")) {
+				DirectoryCreate(local.wsDisk & "\images");
+			}
+			if (DirectoryExists(local.wsDisk & "\media") && DirectoryExists(local.wsDisk & "\images")) {
+				local.mediaFiles = DirectoryList(local.wsDisk & "\media", false, "query");
+				local.imgFiles = DirectoryList(local.wsDisk & "\images", false, "query");
+				if (local.mediaFiles.recordCount > 0 && local.imgFiles.recordCount == 0) {
+					for (local.mi = 1; local.mi <= local.mediaFiles.recordCount; local.mi++) {
+						local.srcFile = local.wsDisk & "\media\" & local.mediaFiles.name[local.mi];
+						local.dstFile = local.wsDisk & "\images\" & local.mediaFiles.name[local.mi];
+						if (compareNoCase(local.mediaFiles.type[local.mi], "file") == 0 && !FileExists(local.dstFile)) {
+							FileCopy(local.srcFile, local.dstFile);
+						}
+					}
+				}
+			}
+			if (!DirectoryExists(local.wsDisk & "\documents")) {
+				DirectoryCreate(local.wsDisk & "\documents");
+			}
+		} catch (any dirErr) {}
+
+		variables.activeWsFolder = local.vDir;
+		variables.activeWsVirtualDir = local.vDir;
+
+		variables.activeWsName = StructKeyExists(local.wsObj, "name") && Len(Trim(local.wsObj.name)) ? local.wsObj.name : variables.currentWs;
+		for (local.w in variables.workspaces) {
+			if (local.w.id eq variables.currentWs) {
+				variables.activeWsName = local.w.name;
+				break;
+			}
+		}
+
+		variables.targetInput = StructKeyExists(params, "targetInput") ? Trim(params.targetInput) : "";
+		if (StructKeyExists(params, "picker") && Len(Trim(params.picker))) {
+			variables.pickerMode = LCase(Trim(params.picker));
+		} else if (Len(variables.targetInput)) {
+			variables.pickerMode = "document";
+		} else {
+			variables.pickerMode = "image";
+		}
+
+		local.reqFolder = StructKeyExists(params, "folder") ? LCase(Trim(params.folder)) : "";
+		if (local.reqFolder eq "documents" || variables.pickerMode eq "document") {
+			variables.initialSubfolder = "documents";
+		} else if (local.reqFolder eq "images" || local.reqFolder eq "media" || variables.pickerMode eq "image") {
+			variables.initialSubfolder = "images";
+		} else {
+			variables.initialSubfolder = "";
+		}
+
+		variables.callback = StructKeyExists(params, "callback") && Len(Trim(params.callback)) ? Trim(params.callback) : "onMediaSelected";
 
 		renderView(layout=false);
 	}

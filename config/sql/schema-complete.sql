@@ -11,6 +11,8 @@
 --   5. Online Form Builder & EAV Submissions (form_departments, forms, form_fields,
 --      form_submissions, form_submission_values, form_audit_logs)
 --   6. Careers & Job Postings (job_listings, job_applications)
+--   7. "How Do I" Directory & Mega-Menu (how_do_i_categories, how_do_i_items)
+--   8. County Calendar of Events (calendar_event_categories, calendar_events)
 --
 -- Execution Mode: One-time execution script, safe to rerun (idempotent).
 -- Data Policy: ZERO test data. Only required core system lookup definitions.
@@ -747,6 +749,197 @@ GO
 
 
 -- =============================================================================
+-- MODULE 7: "HOW DO I" DIRECTORY & MEGA-MENU
+-- =============================================================================
+
+PRINT 'Checking Module 7: how_do_i_categories, how_do_i_items...';
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[how_do_i_categories]') AND type in (N'U'))
+BEGIN
+    CREATE TABLE [dbo].[how_do_i_categories] (
+        [id]          INT IDENTITY(1,1) NOT NULL,
+        [name]        NVARCHAR(120) NOT NULL,
+        [slug]        NVARCHAR(120) NOT NULL,
+        [icon]        NVARCHAR(50) NOT NULL CONSTRAINT [DF_how_do_i_cat_icon] DEFAULT (N'help-circle'),
+        [description] NVARCHAR(255) NULL,
+        [sort_order]  INT NOT NULL CONSTRAINT [DF_how_do_i_cat_sort] DEFAULT (0),
+        [is_active]   BIT NOT NULL CONSTRAINT [DF_how_do_i_cat_active] DEFAULT (1),
+        [is_system]   BIT NOT NULL CONSTRAINT [DF_how_do_i_cat_system] DEFAULT (0),
+        [createdat]   DATETIME2(7) NOT NULL CONSTRAINT [DF_how_do_i_cat_createdat] DEFAULT (SYSUTCDATETIME()),
+        [updatedat]   DATETIME2(7) NOT NULL CONSTRAINT [DF_how_do_i_cat_updatedat] DEFAULT (SYSUTCDATETIME()),
+        [deletedat]   DATETIME2(7) NULL,
+        CONSTRAINT [PK_how_do_i_categories] PRIMARY KEY CLUSTERED ([id] ASC)
+    );
+END;
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UQ_how_do_i_categories_slug' AND object_id = OBJECT_ID(N'[dbo].[how_do_i_categories]'))
+BEGIN
+    CREATE UNIQUE NONCLUSTERED INDEX [UQ_how_do_i_categories_slug]
+        ON [dbo].[how_do_i_categories] ([slug] ASC)
+        WHERE [deletedat] IS NULL;
+END;
+GO
+
+-- Seed Required System "How Do I" Categories
+MERGE INTO [dbo].[how_do_i_categories] AS Target
+USING (VALUES
+    (N'Apply For',   N'apply-for',   N'clipboard-list', N'Permits, licenses, employment, and county program applications.', 10, 1, 1),
+    (N'Contact',     N'contact',     N'phone',          N'Department directories, elected officials, and office contact desks.', 20, 1, 1),
+    (N'Find',        N'find',        N'search',         N'Locate county resources, election results, court statuses, and districts.', 30, 1, 1),
+    (N'File A',      N'file-a',      N'file-text',      N'Submit official claims, petitions, and formal filings.', 40, 1, 1),
+    (N'Join',        N'join',        N'users',          N'Volunteer boards, advisory committees, and community programs.', 50, 1, 1),
+    (N'Pay For',     N'pay-for',     N'hard-drive',     N'Online payments for property taxes, court costs, probation, and accounts.', 60, 1, 1),
+    (N'Learn About', N'learn-about', N'book',           N'Educational guides, court protection orders, and county initiatives.', 70, 1, 1),
+    (N'Register To', N'register-to', N'check-square',   N'Voter registration, jury duty check-in, and court classes.', 80, 1, 1),
+    (N'Report',      N'report',      N'megaphone',      N'Report road hazards, code violations, pest infestations, or tips.', 90, 1, 1),
+    (N'Request',     N'request',     N'mail',           N'Public records requests, court case records, and vital certificates.', 100, 1, 1),
+    (N'Search For',  N'search-for',  N'globe',          N'Public document archives, parcel lookups, and jail registries.', 110, 1, 1),
+    (N'View',        N'view',        N'eye',            N'Court calendars, dockets, schedules, and public hearings.', 120, 1, 1)
+) AS Source ([name], [slug], [icon], [description], [sort_order], [is_active], [is_system])
+ON Target.[slug] = Source.[slug] AND Target.[deletedat] IS NULL
+WHEN NOT MATCHED BY TARGET THEN
+    INSERT ([name], [slug], [icon], [description], [sort_order], [is_active], [is_system], [createdat], [updatedat])
+    VALUES (Source.[name], Source.[slug], Source.[icon], Source.[description], Source.[sort_order], Source.[is_active], Source.[is_system], SYSUTCDATETIME(), SYSUTCDATETIME());
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[how_do_i_items]') AND type in (N'U'))
+BEGIN
+    CREATE TABLE [dbo].[how_do_i_items] (
+        [id]                    INT IDENTITY(1,1) NOT NULL,
+        [category_id]           INT NOT NULL,
+        [siteid]                NVARCHAR(100) NOT NULL CONSTRAINT [DF_how_do_i_items_siteid] DEFAULT (N'global'),
+        [question]              NVARCHAR(255) NOT NULL,
+        [destination_type]      NVARCHAR(30) NOT NULL CONSTRAINT [DF_how_do_i_items_dtype] DEFAULT (N'page'),
+        [page_id]               INT NULL,
+        [form_id]               INT NULL,
+        [destination_url]       NVARCHAR(1000) NOT NULL,
+        [open_in_new_tab]       BIT NOT NULL CONSTRAINT [DF_how_do_i_items_newtab] DEFAULT (0),
+        [is_featured_mega_menu] BIT NOT NULL CONSTRAINT [DF_how_do_i_items_mega] DEFAULT (1),
+        [sort_order]            INT NOT NULL CONSTRAINT [DF_how_do_i_items_sort] DEFAULT (0),
+        [is_published]          BIT NOT NULL CONSTRAINT [DF_how_do_i_items_pub] DEFAULT (1),
+        [created_by]            NVARCHAR(255) NULL,
+        [modified_by]           NVARCHAR(255) NULL,
+        [createdat]             DATETIME2(7) NOT NULL CONSTRAINT [DF_how_do_i_items_createdat] DEFAULT (SYSUTCDATETIME()),
+        [updatedat]             DATETIME2(7) NOT NULL CONSTRAINT [DF_how_do_i_items_updatedat] DEFAULT (SYSUTCDATETIME()),
+        [deletedat]             DATETIME2(7) NULL,
+        CONSTRAINT [PK_how_do_i_items] PRIMARY KEY CLUSTERED ([id] ASC),
+        CONSTRAINT [FK_how_do_i_items_categories] FOREIGN KEY ([category_id]) REFERENCES [dbo].[how_do_i_categories] ([id])
+    );
+END;
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_how_do_i_items_site_cat' AND object_id = OBJECT_ID(N'[dbo].[how_do_i_items]'))
+BEGIN
+    CREATE NONCLUSTERED INDEX [IX_how_do_i_items_site_cat]
+        ON [dbo].[how_do_i_items] ([siteid] ASC, [category_id] ASC, [sort_order] ASC)
+        WHERE [deletedat] IS NULL;
+END;
+GO
+
+
+-- =============================================================================
+-- MODULE 8: COUNTY CALENDAR OF EVENTS
+-- =============================================================================
+
+PRINT 'Checking Module 8: calendar_event_categories, calendar_events...';
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[calendar_event_categories]') AND type in (N'U'))
+BEGIN
+    CREATE TABLE [dbo].[calendar_event_categories] (
+        [id]          INT IDENTITY(1,1) NOT NULL,
+        [name]        NVARCHAR(120) NOT NULL,
+        [slug]        NVARCHAR(120) NOT NULL,
+        [color]       NVARCHAR(30)  NOT NULL CONSTRAINT [DF_cal_event_cat_color] DEFAULT (N'#0284c7'),
+        [badge_class] NVARCHAR(50)  NOT NULL CONSTRAINT [DF_cal_event_cat_badge] DEFAULT (N'badge-info'),
+        [icon]        NVARCHAR(50)  NOT NULL CONSTRAINT [DF_cal_event_cat_icon]  DEFAULT (N'calendar'),
+        [description] NVARCHAR(255) NULL,
+        [sort_order]  INT NOT NULL CONSTRAINT [DF_cal_event_cat_sort]   DEFAULT (0),
+        [is_active]   BIT NOT NULL CONSTRAINT [DF_cal_event_cat_active] DEFAULT (1),
+        [is_system]   BIT NOT NULL CONSTRAINT [DF_cal_event_cat_system] DEFAULT (0),
+        [createdat]   DATETIME2(7) NOT NULL CONSTRAINT [DF_cal_event_cat_createdat] DEFAULT (SYSUTCDATETIME()),
+        [updatedat]   DATETIME2(7) NOT NULL CONSTRAINT [DF_cal_event_cat_updatedat] DEFAULT (SYSUTCDATETIME()),
+        [deletedat]   DATETIME2(7) NULL,
+        CONSTRAINT [PK_calendar_event_categories] PRIMARY KEY CLUSTERED ([id] ASC)
+    );
+END;
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UQ_calendar_event_categories_slug' AND object_id = OBJECT_ID(N'[dbo].[calendar_event_categories]'))
+BEGIN
+    CREATE UNIQUE NONCLUSTERED INDEX [UQ_calendar_event_categories_slug]
+        ON [dbo].[calendar_event_categories] ([slug] ASC)
+        WHERE [deletedat] IS NULL;
+END;
+GO
+
+-- Seed Required System County Calendar Event Categories
+MERGE INTO [dbo].[calendar_event_categories] AS Target
+USING (VALUES
+    (N'Commissioners Meeting',       N'commissioners-meeting', N'#0284c7', N'badge-info',    N'building',     N'Board of County Commissioners regular sessions, workshops, and legislative briefings.', 10, 1, 1),
+    (N'Public Hearing',              N'public-hearing',        N'#b45309', N'badge-warning', N'megaphone',    N'Official public hearings, land use dockets, budget hearings, and ordinance reviews.', 20, 1, 1),
+    (N'Advisory Board & Committee',  N'advisory-board',        N'#7e22ce', N'badge-purple',  N'users',        N'Planning Commission, Noxious Weed Board, Lodging Tax, and citizen advisory committees.', 30, 1, 1),
+    (N'Community Event & Outreach',  N'community-event',       N'#15803d', N'badge-success', N'calendar',     N'County Expo Center events, town halls, parks activities, and public workshops.', 40, 1, 1),
+    (N'Holiday & Office Closure',    N'holiday-closure',       N'#b91c1c', N'badge-danger',  N'clock',        N'Official county holidays, courthouse closures, and modified department hours.', 50, 1, 1),
+    (N'Elections & Civic Deadlines', N'elections-deadlines',   N'#0f172a', N'badge-neutral', N'check-square', N'Voter registration deadlines, ballot drop dates, tax due dates, and public trainings.', 60, 1, 1)
+) AS Source ([name], [slug], [color], [badge_class], [icon], [description], [sort_order], [is_active], [is_system])
+ON Target.[slug] = Source.[slug] AND Target.[deletedat] IS NULL
+WHEN NOT MATCHED BY TARGET THEN
+    INSERT ([name], [slug], [color], [badge_class], [icon], [description], [sort_order], [is_active], [is_system], [createdat], [updatedat])
+    VALUES (Source.[name], Source.[slug], Source.[color], Source.[badge_class], Source.[icon], Source.[description], Source.[sort_order], Source.[is_active], Source.[is_system], SYSUTCDATETIME(), SYSUTCDATETIME());
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[calendar_events]') AND type in (N'U'))
+BEGIN
+    CREATE TABLE [dbo].[calendar_events] (
+        [id]                  INT IDENTITY(1,1) NOT NULL,
+        [siteid]              NVARCHAR(100) NOT NULL CONSTRAINT [DF_calendar_events_siteid] DEFAULT (N'global'),
+        [category_id]         INT NOT NULL,
+        [title]               NVARCHAR(255) NOT NULL,
+        [slug]                NVARCHAR(255) NOT NULL,
+        [summary]             NVARCHAR(500) NULL,
+        [description]         NVARCHAR(MAX) NULL,
+        [start_date]          DATE NOT NULL,
+        [end_date]            DATE NOT NULL,
+        [start_time]          NVARCHAR(20) NULL,
+        [end_time]            NVARCHAR(20) NULL,
+        [is_all_day]          BIT NOT NULL CONSTRAINT [DF_calendar_events_allday] DEFAULT (0),
+        [location_name]       NVARCHAR(255) NULL,
+        [location_address]    NVARCHAR(255) NULL,
+        [room_number]         NVARCHAR(120) NULL,
+        [virtual_meeting_url] NVARCHAR(1000) NULL,
+        [virtual_meeting_id]  NVARCHAR(120) NULL,
+        [agenda_url]          NVARCHAR(1000) NULL,
+        [minutes_url]         NVARCHAR(1000) NULL,
+        [contact_name]        NVARCHAR(150) NULL,
+        [contact_email]       NVARCHAR(150) NULL,
+        [contact_phone]       NVARCHAR(60) NULL,
+        [is_featured]         BIT NOT NULL CONSTRAINT [DF_calendar_events_featured] DEFAULT (0),
+        [is_public_notice]    BIT NOT NULL CONSTRAINT [DF_calendar_events_notice] DEFAULT (0),
+        [status]              NVARCHAR(30) NOT NULL CONSTRAINT [DF_calendar_events_status] DEFAULT (N'Published'),
+        [created_by]          NVARCHAR(255) NULL,
+        [modified_by]         NVARCHAR(255) NULL,
+        [createdat]           DATETIME2(7) NOT NULL CONSTRAINT [DF_calendar_events_createdat] DEFAULT (SYSUTCDATETIME()),
+        [updatedat]           DATETIME2(7) NOT NULL CONSTRAINT [DF_calendar_events_updatedat] DEFAULT (SYSUTCDATETIME()),
+        [deletedat]           DATETIME2(7) NULL,
+        CONSTRAINT [PK_calendar_events] PRIMARY KEY CLUSTERED ([id] ASC),
+        CONSTRAINT [FK_calendar_events_categories] FOREIGN KEY ([category_id]) REFERENCES [dbo].[calendar_event_categories] ([id])
+    );
+END;
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_calendar_events_dates_site' AND object_id = OBJECT_ID(N'[dbo].[calendar_events]'))
+BEGIN
+    CREATE NONCLUSTERED INDEX [IX_calendar_events_dates_site]
+        ON [dbo].[calendar_events] ([start_date] ASC, [end_date] ASC, [siteid] ASC, [category_id] ASC)
+        WHERE [deletedat] IS NULL;
+END;
+GO
+
+
+-- =============================================================================
 -- FINAL VERIFICATION: TABLE AUDIT REPORT
 -- =============================================================================
 
@@ -779,8 +972,11 @@ WHERE t.[schema_id] = SCHEMA_ID(N'dbo')
       N'form_submission_values',
       N'form_audit_logs',
       N'job_listings',
-      N'job_applications'
+      N'job_applications',
+      N'how_do_i_categories',
+      N'how_do_i_items',
+      N'calendar_event_categories',
+      N'calendar_events'
   )
 ORDER BY t.[name] ASC;
 GO
-

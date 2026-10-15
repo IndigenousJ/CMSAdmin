@@ -9,6 +9,16 @@
  * @param {Array<HTMLElement | string>} [children] 
  * @returns {HTMLElement}
  */
+export function escapeHTML(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 export function createElement(tag, attrs = {}, children = []) {
   const el = document.createElement(tag);
 

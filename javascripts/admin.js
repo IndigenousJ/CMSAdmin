@@ -74,7 +74,7 @@ function showNextAdminPrompt() {
   title.textContent = current.options.title || (isAlert ? (type === "danger" ? "Error" : type === "warning" ? "Warning" : type === "success" ? "Success" : "Notice") : "Please confirm");
   message.textContent = String(current.options.message || "");
   cancel.textContent = current.options.cancelText || "Cancel";
-  accept.textContent = current.options.acceptText || (isAlert ? "OK" : "Continue");
+  accept.textContent = current.options.acceptText || current.options.confirmText || (isAlert ? "OK" : "Continue");
   if (isAlert) {
     cancel.hidden = true;
     cancel.style.display = "none";
@@ -148,12 +148,18 @@ function showNextAdminPrompt() {
   (isAlert ? accept : cancel).focus();
 }
 
-window.adminAlert = function (message, options = {}) {
-  return showAdminPrompt({ ...options, kind: "alert", message });
+window.adminAlert = function (messageOrOptions, options = {}) {
+  if (messageOrOptions && typeof messageOrOptions === "object") {
+    return showAdminPrompt({ ...options, ...messageOrOptions, kind: "alert" });
+  }
+  return showAdminPrompt({ ...options, kind: "alert", message: messageOrOptions });
 };
 
-window.adminConfirm = function (message, options = {}) {
-  return showAdminPrompt({ ...options, kind: "confirm", message });
+window.adminConfirm = function (messageOrOptions, options = {}) {
+  if (messageOrOptions && typeof messageOrOptions === "object") {
+    return showAdminPrompt({ ...options, ...messageOrOptions, kind: "confirm" });
+  }
+  return showAdminPrompt({ ...options, kind: "confirm", message: messageOrOptions });
 };
 
 /**

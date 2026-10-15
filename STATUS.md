@@ -1,7 +1,7 @@
 # Chelan County CMS Admin 2.0 - Comprehensive Project Status
 
-**Current Stage:** Form Builder Database Wiring (SQL Server persistence ~70% complete)  
-**Last Updated:** 2026-10-05  
+**Current Stage:** Pages, Navigation, HRM Jobs, Form Builder & "How Do I?" Directory Manager (SQL Server Wired)  
+**Last Updated:** 2026-10-14  
 **Platform Host:** `http://cmsadmin.chelancounty.gov/`  
 **Framework:** CFWheels 4.1.2 (App-side flat structure)  
 **Server Environment:** Microsoft-IIS/10.0 + Lucee CFML Engine (Java/JVM)  
@@ -11,7 +11,7 @@
 
 ## 📊 1. Executive Summary
 
-CMSAdmin 2.0 is an enterprise-grade, high-performance Content Management System administration suite architected for Chelan County public services. The system replaces bloated legacy dependencies with zero-dependency modern native web standards, full ADA WCAG 2.1/2.2 AA accessibility, multi-tier automated anti-spam protections, departmental organization (featuring dedicated HRM and PIO divisions), an interactive visual online form builder, and a comprehensive pages and content management system.
+CMSAdmin 2.0 is an enterprise-grade, high-performance Content Management System administration suite architected for Chelan County public services. The system replaces bloated legacy dependencies with zero-dependency modern native web standards, full ADA WCAG 2.1/2.2 AA accessibility, multi-tier automated anti-spam protections, departmental organization (featuring dedicated HRM and PIO divisions), an interactive visual online form builder, a public-service "How Do I?" directory manager, and a comprehensive pages and content management system.
 
 ---
 
@@ -19,29 +19,30 @@ CMSAdmin 2.0 is an enterprise-grade, high-performance Content Management System 
 
 | Module | Route / Endpoint | Status | Description |
 |---|---|---|---|
-| **Admin Shell & Layout** | `/` (Dashboard) | ✅ Complete | Chelan County official logo (`logo.png`), responsive sidebar, workspace selector, breadcrumbs, notifications. "New Content" quick create button removed from header. "Public Records Requests" link removed from PIO sidebar menu. |
-| **Workspace Selector** | Global Header | ✅ Complete | Department/site switcher (`Global`, `HRM`, `PIO`, `Admin`, `Community Development`) with localStorage persistence and event broadcasting. |
-| **Form Builder Studio** | `/form-builder`, `/forms/builder` | ✅ Complete | 17+ field palette, drag/click-to-add, live property inspector, sticky scroll panels, mobile column auto-stacking, device viewport simulator. Starts with a fresh, clean canvas centered to occupy the full container workspace on new form creation or studio entry, with explicit template loading (`?template=...`) and draft resumption (`?resume=1`). |
-| **Form Starter Templates** | `/forms/builder?template=...`, `/forms/preview?template=...` | ✅ Complete | Official municipal templates: "Report a Problem" (Public Works / road hazards, potholes, drainage, park maintenance), "Report Infestations & Pests" (Natural Resources / noxious weeds, agricultural pests, tree borers), HRM Candidate Intake, PIO Press Inquiry, Building Permit, and Satisfaction Survey. |
-| **Form Builder DB Save / Load** | `POST /forms/save`, `/forms/builder?id=N` | 🟢 Wired (needs runtime test) | `Forms.cfc:save()` upserts `forms` + `form_fields` (by `field_key`, soft-deletes removed fields), caches `schema_json`, writes `form_audit_logs`. Builder loads DB forms via `window.CMSAdminFormBuilderConfig.form` and saves via `fetch` with `X-CSRF-Token`. |
-| **Public Form Intake** | `/forms/preview?slug=…` | 🟡 Partial | Server side loads published forms by `slug`/`key`/`id` into `variables.fbPublicFormJson`, but `preview.cfm` **does not consume it yet** (still reads templates / localStorage) and does not send `_form_key` / `_payload` on submit. |
-| **Form Management Directory** | `/forms`, `/forms/index` | 🟡 Partial | Rows, KPI cards, status pills and department tabs now render from SQL Server (`formsList`, `formMetrics`, `deptTabs`); soft delete wired (`POST /forms/delete`). Submissions modal + CSV button still show mock data; dead mock rows remain inside `<cfif false>`. |
-| **Form Submission Endpoint** | `/forms/submit` (POST/GET) | 🟢 Wired (needs runtime test) | With `_form_key`: per-form honeypot + speed trap, required-field validation, file uploads to `files/_form-uploads/` (web.config deny), inserts `form_submissions` + `form_submission_values`, increments counter, audits, optional email. Without key: legacy validate-only response (`persisted:false`). |
-| **Submissions JSON / CSV Export** | `/forms/submissions?id=N`, `/forms/exportCsv?id=N` | 🟡 Backend only | Actions exist in `Forms.cfc` (reachable via wildcard route); no explicit named routes and no UI consumer yet. |
+| **Admin Shell & Layout** | `/` (Dashboard) | ✅ Complete | Chelan County official logo (`logo.png`), responsive sidebar, workspace selector, breadcrumbs, notifications, and custom modal dialog system (`window.adminAlert`, `window.adminConfirm`, `window.adminPrompt`). |
+| **Workspace Selector** | Global Header | ✅ Complete | Department/site switcher (`Global`, `HRM`, `PIO`, `Admin`, `Community Development`, etc.) with localStorage/cookie persistence and event broadcasting. |
+| **How Do I? Directory Manager** | `/pages/how-do-i`, `/pages/save-how-do-i-item`, `/pages/save-how-do-i-category`, `/pages/delete-how-do-i-item`, `/pages/delete-how-do-i-category` | ✅ Complete | Full CRUD manager under **Pages > How Do I** modeled after `https://www.co.chelan.wa.us/howdoi` (Apply for, Contact, Find, File, Get, Learn About, Pay, Register for, Report, Request, Submit, View). Supports linking each question to an internal CMS **Page**, an online **Form**, or an **External URL**, with live 4-column public directory preview, category management, SQL Server persistence (`how_do_i_categories`, `how_do_i_items`), CSRF header verification, and custom `adminAlert`/`adminConfirm` dialogs. |
+| **All Pages Directory & Modal** | `/pages`, `/pages/index` | ✅ Complete | SQL Server-backed filterable listing, system-page protection, and accessible "Add Page" modal with real-time slugify, immediate DB creation, and 2 iconized layout wireframe cards (`Full Width` and `Right Sidebar`). |
+| **Add / Edit Page Editor** | `/pages/edit`, `/pages/edit?id=N` | ✅ Complete | SQL Server-backed page & sub-page editor (`pages`, `sub_pages`), JBD Rich Text Editor, SEO meta fields, Page Assignment listbox (`Top Level - Called from URL` / `Assign to Main Menu Item`), conditional menu item picker, and Right Sidebar sub-pages manager. |
+| **Folder Explorer in Page Attributes** | `/pages/edit` (Page Attributes) | ✅ Complete | Integrated into Page Attributes on Add/Edit Page (`folder_explorers`). "Add Folder Explorer Item" modal prompts for Title, Server Absolute Path, Web URL Relative Path, and Layout selection (`Full Width` vs `3/9 Grid Layout`) with iconized wireframe cards. |
+| **Events / Calendar Manager** | `/events`, `/calendar`, `/events/save`, `/events/delete`, `/events/category/save`, `/events/ics` | ✅ Complete | Full County Calendar of Events studio under **Content Management > Events / Calendar** (`calendar_events`, `calendar_event_categories`). Features Interactive Monthly Calendar Grid, Filterable Events List, Public Calendar Preview, Add/Edit Event modal with Quick Presets (time & county locations), Virtual Meeting (Zoom/Teams) links, Agenda Packet Media Library integration, Category Manager, and `.ICS` iCalendar export. |
+| **Navigation Menu Manager** | `/navigation`, `/navigation/index` | ✅ Complete | Multi-workspace navigation menu & hierarchical menu item studio (`navigation_menus`, `navigation_menu_items`). |
+| **HRM Job Postings & Careers** | `/jobs`, `/jobs/edit` | ✅ Complete | Human Resources job postings & applications studio (`job_postings`, `job_applications`). |
+| **Form Builder Studio** | `/form-builder`, `/forms/builder` | ✅ Complete | 17+ field palette, drag/click-to-add, live property inspector, sticky scroll panels, mobile column auto-stacking, device viewport simulator. Starts with a clean canvas on new form creation with explicit template loading (`?template=...`) and draft resumption (`?resume=1`). |
+| **Form Starter Templates** | `/forms/builder?template=...`, `/forms/preview?template=...` | ✅ Complete | Official municipal templates: "Report a Problem" (Public Works), "Report Infestations & Pests" (Natural Resources), HRM Candidate Intake, PIO Press Inquiry, Building Permit, and Satisfaction Survey. |
+| **Form Builder DB Save / Load** | `POST /forms/save`, `/forms/builder?id=N` | ✅ Complete | `Forms.cfc:save()` upserts `forms` + `form_fields` (by `field_key`, soft-deletes removed fields), caches `schema_json`, writes `form_audit_logs`. Builder loads DB forms via `window.CMSAdminFormBuilderConfig.form` and saves via `fetch` with `X-CSRF-Token`. |
+| **Public Form Intake & Submissions** | `/forms/preview?slug=…`, `/forms/submit`, `/forms/submissions`, `/forms/export-csv` | ✅ Complete | Public form rendering, per-form honeypot + speed trap, file uploads to `files/_form-uploads/`, live submissions modal, and UTF-8 CSV export. |
 | **Embed & Export Engine** | Form Builder Modal | ✅ Complete | Responsive iFrame embed generator, syntax-highlighted code card, standalone WCAG AA HTML download, JSON schema export. |
-| **All Pages Directory & Modal** | `/pages`, `/pages/index` | ✅ Complete | Filterable listing, system-page protection, and accessible "Add Page" modal with real-time slugify and 2 iconized layout wireframe cards (`Full Width` and `Right Sidebar`). |
-| **Add / Edit Page Editor** | `/pages/edit`, `/pages/edit?id=N` | ✅ Complete | Dynamic parameter intake (`title`, `slug`, `layout`), initialization notification banner, rich formatting toolbar, SEO meta fields, Page Assignment listbox (`Top Level - Called from URL` / `Assign to Main Menu Item`), conditional menu item picker, template selector, main menu toggle. |
-| **Folder Explorer in Page Attributes** | `/pages/edit` (Page Attributes) | ✅ Complete | Integrated into Page Attributes on Add/Edit Page. "Add Folder Explorer Item" modal prompts for Title, Server Absolute Path, Web URL Relative Path, and Layout selection (`Full Width` vs `3/9 Grid Layout`) with iconized wireframe cards. Main menu entry removed. |
-| **Workspace Root Files & Media Library** | `/files/` (Root Filesystem) | ✅ Complete | Dedicated root `files/` folders provisioned for each workspace/site (`assessors`, `auditor`, `hrm`, `pio`, `community-development`, `public-works`, `admin`, `commissioners`, `sheriff`, `treasurer`, `clerk`, `chelancounty.gov`, `parks.chelancounty.gov`, `gis.chelancounty.gov`, `shared`). `files/assessors` structured with `media` and `documents` subdirectories to serve as the shared folder for media library assets and documents. Assessor and Auditor integrated into the Workspace dropdown in `layout.cfm`. |
-| **Media Library & Asset Browser** | `/media`, `/media/upload`, `/media/picker` | ✅ Complete | Full government-grade media asset management studio: dual Grid & List views, real-time filesystem scanning (`files/`), strict workspace folder isolation (active workspace exclusively scans its assigned on-disk directory `files/[workspace]`), seamless integration with top header Workspace selector (redundant in-filter dropdown eliminated), direct sidebar navigation link with automatic workspace query param synchronization, cookie and event auto-sync, workspace-isolated KPI stat cards, multi-facet filtering (subfolder, type, ADA compliance, sorting), live search, asset inspector drawer with metadata editor, drag-and-drop upload studio, and modal Media Picker integration for the Page Editor. |
+| **Workspace Root Files & Media Library** | `/files/` (Root Filesystem) | ✅ Complete | Dedicated root `files/` folders provisioned for each workspace/site (`assessors`, `auditor`, `hrm`, `pio`, `community-development`, `public-works`, `admin`, `commissioners`, `sheriff`, `treasurer`, `clerk`, `chelancounty.gov`, `parks.chelancounty.gov`, `gis.chelancounty.gov`, `shared`). |
+| **Media Library & Asset Browser** | `/media`, `/media/upload`, `/media/picker` | ✅ Complete | Full government-grade media asset management studio: dual Grid & List views, real-time filesystem scanning (`files/`), strict workspace folder isolation, live search, asset inspector drawer with metadata editor, drag-and-drop upload studio, and modal Media Picker integration. |
 | **PIO Articles & Posts** | `/app/views/layout.cfm` | ✅ Complete | Articles & Posts menu moved exclusively under PIO (Public Information Office) in the sidebar and Quick Create menu. |
 | **Users & Roles Directory** | `/users`, `/users/index` | ✅ Complete | Government staff directory with 4 user groups (`Admin`, `PIO`, `HR`, `Author`), live multi-facet filtering, search, 2FA status, and accessible Role Permissions Inspector modal. |
 | **Roles & Permissions Studio** | `/users/roles` | ✅ Complete | Dedicated RBAC permissions studio with 4 usergroup overview cards, full functional capability matrix, and dynamic persona switcher. |
 | **Workspaces Management Studio** | `/workspaces`, `/workspaces/index` | ✅ Complete | Dedicated Administrator workspace management center: 16 municipal workspaces, 4 KPI cards, filter tabs (Departments vs Sites), filesystem verification, staff counts, and direct context switching. |
-| **Add / Edit User Management** | `/users/new`, `/users/edit` | ✅ Complete | Fast-action add/edit staff forms with interactive 4-role selection radio cards, department workspace scoping, and live permission summaries. 6x6 col (50%/50%) responsive grid layout: Row 1 features Profile Info + User Group & Role; Row 2 features Scoped Department Workspaces (12-col); Row 3 features Primary Home Department + Credentials & Security in one row. |
+| **Add / Edit User Management** | `/users/new`, `/users/edit` | ✅ Complete | Fast-action add/edit staff forms with interactive 4-role selection radio cards, department workspace scoping, and live permission summaries. |
 | **Dynamic Role Simulator** | `/users/simulate?role=[role]` | ✅ Complete | Real-time interface simulator allowing administrators to test and preview the exact CMS interface for Admin, PIO, HR, and Author roles. |
-| **Delete Prevention Policy** | Pages & Core Records | ✅ Complete | Permanent record protection: delete actions removed from Pages screens. Inactive/Hidden status used for decommissioning. |
-| **Database Schema Specs** | `Form-Builder.md`, SQL scripts | ✅ Complete | MSSQL, MySQL, and PostgreSQL DDL definitions for forms, departments, fields, submissions, values, and audit logs. |
+| **Delete Prevention Policy** | Pages & Core Records | ✅ Complete | Permanent record protection on Pages: delete actions removed from Pages screens. Inactive/Hidden status used for decommissioning. |
+| **Database Schema Specs** | `config/sql/*.sql`, `Form-Builder.md` | ✅ Complete | Complete SQL Server schemas (`schema-complete.sql`, `schema-how-do-i.sql`, `schema-pages.sql`, `schema-page-subpage.sql`, `schema-foldex-explorer.sql`, `schema-navigation.sql`, `schema-form-builder.sql`, `schema-users-roles.sql`, `schema-workspaces.sql`). |
 
 ---
 
@@ -158,18 +159,40 @@ The platform enforces a robust 4-tier security model designed specifically for C
 c:\inetpub\CMSAdmin2.0\
 ├── app/
 │   ├── controllers/
-│   │   ├── Controller.cfc          # Base CFWheels controller
-│   │   ├── Forms.cfc               # Form builder, listing, preview & submit actions
-│   │   ├── Pages.cfc               # All Pages listing and Add/Edit Page actions
-│   │   ├── Media.cfc               # Media Library directory, scanner, upload & metadata API
-│   │   ├── Users.cfc               # Users & Roles directory, matrix, simulation & CRUD actions
+│   │   ├── Controller.cfc          # Base CFWheels controller (CSRF protection, role & workspace security)
+│   │   ├── Documentation.cfc       # System documentation & guides controller
+│   │   ├── Forms.cfc               # Form builder, listing, preview, submit, submissions & CSV export
+│   │   ├── Jobs.cfc                # HRM Job Postings & Applications controller
 │   │   ├── Main.cfc                # CMS Admin dashboard controller
-│   │   └── Up.cfc                  # Proxy health check / warmup probe
+│   │   ├── Media.cfc               # Media Library directory, scanner, upload & metadata API
+│   │   ├── Navigation.cfc          # Navigation Menu & Menu Items studio controller
+│   │   ├── Pages.cfc               # All Pages, Add/Edit Page, Sub-Pages, Folder Explorer & "How Do I?" CRUD
+│   │   ├── Sessions.cfc            # Authentication & session controller
+│   │   ├── Up.cfc                  # Proxy health check / warmup probe
+│   │   ├── Users.cfc               # Users & Roles directory, matrix, simulation & CRUD actions
+│   │   └── Workspaces.cfc          # Administrator Workspace Management Studio controller
 │   ├── models/
-│   │   ├── Role.cfc                # CFWheels Role model mapping to cms_roles
-│   │   └── User.cfc                # CFWheels User model mapping to cms_users
+│   │   ├── FolderExplorer.cfc      # Folder explorer mappings (`folder_explorers`)
+│   │   ├── Form.cfc                # Form definitions (`forms`)
+│   │   ├── FormAuditLog.cfc        # Form security & lifecycle audit log (`form_audit_logs`)
+│   │   ├── FormDepartment.cfc      # Form departments (`form_departments`)
+│   │   ├── FormField.cfc           # Form fields (`form_fields`)
+│   │   ├── FormSubmission.cfc      # Form submissions (`form_submissions`)
+│   │   ├── FormSubmissionValue.cfc # Form submission values (`form_submission_values`)
+│   │   ├── HowDoICategory.cfc      # "How Do I?" verb categories (`how_do_i_categories`)
+│   │   ├── HowDoIItem.cfc          # "How Do I?" action links (`how_do_i_items`)
+│   │   ├── JobApplication.cfc      # HRM job applications (`job_applications`)
+│   │   ├── JobPosting.cfc          # HRM job postings (`job_postings`)
+│   │   ├── NavigationMenu.cfc      # Site navigation menus (`navigation_menus`)
+│   │   ├── NavigationMenuItem.cfc  # Navigation menu items (`navigation_menu_items`)
+│   │   ├── Page.cfc                # CMS pages (`pages`)
+│   │   ├── Role.cfc                # RBAC roles (`cms_roles`)
+│   │   ├── SubPage.cfc             # Page right-sidebar sub-pages (`sub_pages`)
+│   │   ├── User.cfc                # Staff accounts (`cms_users`)
+│   │   ├── UserWorkspace.cfc       # User-workspace junction (`cms_user_workspaces`)
+│   │   └── Workspace.cfc           # Municipal workspaces (`cms_workspaces`)
 │   └── views/
-│       ├── layout.cfm              # Master admin template, sidebar, role simulator banner, header
+│       ├── layout.cfm              # Master admin template, sidebar, header, custom dialog modal (`#adminPromptBackdrop`)
 │       ├── helpers.cfm             # Global view helpers (svgIcon, badges)
 │       ├── forms/
 │       │   ├── builder.cfm         # Interactive 3-column Form Builder Studio
@@ -177,8 +200,9 @@ c:\inetpub\CMSAdmin2.0\
 │       │   └── preview.cfm         # Standalone accessible public form intake
 │       ├── pages/
 │       │   ├── index.cfm           # All Pages listing with multi-facet filters & Add Page modal
-│       │   ├── edit.cfm            # Add / Edit Page editor with formatting toolbar
-│       │   └── folderExplorer.cfm  # Add Folder Explorer form (Title, Paths, Grid layouts)
+│       │   ├── edit.cfm            # Add / Edit Page editor with JBD editor, sub-pages & folder explorer
+│       │   ├── folderExplorer.cfm  # Add Folder Explorer form (Title, Paths, Grid layouts)
+│       │   └── howDoI.cfm          # "How Do I?" Directory Manager (categories, items, live 4-col preview)
 │       ├── media/
 │       │   ├── index.cfm           # Media Library directory (Grid & List, WCAG audit, Inspector)
 │       │   ├── upload.cfm          # Dedicated Drag-and-Drop file upload studio
@@ -191,31 +215,29 @@ c:\inetpub\CMSAdmin2.0\
 │       └── main/
 │           └── index.cfm           # Dashboard KPI stats, recent content, quick draft
 ├── config/
-│   ├── routes.cfm                  # RESTful route mappings
+│   ├── routes.cfm                  # RESTful & explicit controller/action route mappings
 │   ├── environment.cfm             # Dynamic environment detector (dev vs prod)
 │   ├── settings.cfm                # App settings, reload password configuration
 │   └── sql/
+│       ├── schema-complete.sql     # Compiled master SQL Server schema
+│       ├── schema-how-do-i.sql     # "How Do I?" categories & items SQL Server schema + Chelan County seed
+│       ├── schema-pages.sql        # Pages relational DDL definitions
+│       ├── schema-page-subpage.sql # Sub-pages relational DDL definitions
+│       ├── schema-foldex-explorer.sql # Folder Explorer relational DDL definitions
+│       ├── schema-navigation.sql   # Navigation menus relational DDL definitions
 │       ├── schema-form-builder.sql # Form Builder relational DDL definitions
-│       └── schema-users-roles.sql  # Users & Roles schema DDL & seed dataset for SQL Server
+│       ├── schema-users-roles.sql  # Users & Roles schema DDL & seed dataset
+│       └── schema-workspaces.sql   # Workspaces relational DDL definitions
 ├── files/                          # Root filesystem storage for workspaces & sites
-│   ├── assessors/                  # Assessor shared folder for media library & documents
-│   │   ├── media/                  # Shared photos, parcel maps, logos, badges
-│   │   └── documents/              # Public records, assessment schedules, forms
-│   ├── auditor/                    # Auditor elections, recording & licensing repository
-│   ├── hrm/                        # Human Resources recruitment, policies & benefits
-│   ├── pio/                        # Public Information Office press kits & media alerts
-│   ├── community-development/      # Community Development permits, planning & zoning
-│   ├── public-works/               # Public Works roads, utilities & project documents
-│   ├── admin/                      # County Administration & commissioner agendas
-│   ├── shared/                     # County-wide global shared media library
-│   └── [site-portals]/             # chelancounty.gov, parks.chelancounty.gov, etc.
 ├── javascripts/
-│   ├── admin.js                    # Admin shell, workspace selector, mobile drawer
+│   ├── admin.js                    # Admin shell, workspace selector, custom dialogs (`adminAlert`, `adminConfirm`, `adminPrompt`), toasts
 │   └── form-builder.js             # Canvas engine, property binding, preview, export
 ├── stylesheets/
 │   ├── admin-theme.css             # Core design system tokens, WCAG AA focus, utilities
 │   └── form-builder.css            # Studio grid, sticky scrolling panels, device canvas
+├── CHECKPOINT.md                   # Latest engineering checkpoint & verification notes
 ├── Form-Builder.md                 # Form Builder technical architecture & database specs
+├── NEXT-AI-PROMPT.md               # Continuation prompt for next AI session
 ├── PROMPT.md                       # Comprehensive prompt history & continuation guidelines
 └── STATUS.md                       # Master project status & compliance documentation
 ```
@@ -224,14 +246,11 @@ c:\inetpub\CMSAdmin2.0\
 
 ## ⏳ 7. Open Items & Next Milestones
 
-1. **Finish Form Builder DB wiring (highest priority)** — see [NEXT-AI-PROMPT.md](NEXT-AI-PROMPT.md) for the full task list:
-   - `preview.cfm`: consume `fbPublicFormJson`, show "Form Unavailable" when a requested form is missing, submit `_form_key` + `_payload` JSON + files, remove the fake-success `catch` fallback for DB forms, honor `redirectUrl`.
-   - `form-builder.js`: share/embed link should use `?slug=` (currently `?id=form_N`), department dropdown from `CMSAdminFormBuilderConfig.departments`, add Draft/Published/Archived status select, normalize loaded field types (`width` → string).
-   - `forms/index.cfm`: real submissions modal (`/forms/submissions?id=N`) and CSV export (`/forms/exportCsv?id=N`); delete the `<cfif false>` mock block; fix grid view to use row `data-*` URLs.
-   - Create `app/lib/formNotificationMail.cfm` (tag-based `<cfmail>` reading `request.fbMail`).
-   - Add explicit named routes for `submissions` and `exportCsv`.
-   - Runtime-verify end to end after `?reload=true&password=chelancms`.
-2. **Policy decision:** `POST /forms/delete` soft-deletes forms, which conflicts with the documented Delete Prevention Policy (Pages). Confirm with stakeholders.
-3. **Remaining persistence:** Connect `Pages.cfc` and `Media.cfc` metadata to SQL Server.
-4. **PIO Press Release & News Manager**:
+1. **Public Frontend / Mega-Menu Consumption of "How Do I?" Directory**:
+   - Expose a read-only public endpoint or helper query for the public website theme and global mega-menu (`show_in_mega_menu = 1`) to render active `how_do_i_categories` and `how_do_i_items`.
+2. **Drag-and-Drop / Quick Sort Reordering in "How Do I?" Manager**:
+   - Optional UI enhancement to reorder `sort_order` across items within a category without opening the Edit modal.
+3. **PIO Press Release & News Manager**:
    - Scaffold the dedicated Articles & Posts interface stationed under the PIO division.
+4. **Media Library Database Metadata Sync**:
+   - Connect `Media.cfc` alt-text and document metadata catalog to SQL Server persistence.
